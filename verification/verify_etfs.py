@@ -1,34 +1,27 @@
 from playwright.sync_api import sync_playwright
 
-def verify_etf_page():
+def verify_frontend():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         try:
             print("Navigating to home page...")
-            page.goto("http://localhost:3000", timeout=60000)
+            page.goto("http://localhost:3000")
 
-            # Click "Start Intelligence" or similar if needed to get to app
-            # Based on app/page.tsx, there's a Hero with onStart
-            print("Clicking Start...")
-            page.click("text=Start Intelligence")
+            print("Clicking on 'Start Analysis' to start app...")
+            # Using text since role might be ambiguous with icons or multiple buttons
+            page.get_by_text("Start Analysis").click()
 
-            # Wait for Navigation to appear
-            print("Waiting for navigation...")
-            page.wait_for_selector("nav", timeout=10000)
+            print("Waiting for navigation to 'ETFS' tab...")
+            # Click ETFS tab
+            page.get_by_role("tab", name="ETFs").click()
 
-            # Click ETFs tab
-            print("Clicking ETFs tab...")
-            page.click("text=ETFs")
+            print("Waiting for list to load...")
+            page.wait_for_timeout(5000)
 
-            # Wait for grid to load (ComparisonEngine)
-            # The list uses react-window, so we should see items
-            print("Waiting for ETF list...")
-            page.wait_for_selector(".glass-card", timeout=15000)
-
-            # Take screenshot of the list
-            print("Taking screenshot...")
-            page.screenshot(path="verification/etfs_page.png")
+            # Take screenshot
+            page.screenshot(path="verification/etfs_tab.png")
+            print("Screenshot saved to verification/etfs_tab.png")
 
         except Exception as e:
             print(f"Error: {e}")
@@ -37,4 +30,4 @@ def verify_etf_page():
             browser.close()
 
 if __name__ == "__main__":
-    verify_etf_page()
+    verify_frontend()

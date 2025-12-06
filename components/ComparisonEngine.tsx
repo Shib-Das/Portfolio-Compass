@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ETFDetailsDrawer from './ETFDetailsDrawer';
 import MessageDrawer from './MessageDrawer';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import { List as FixedSizeList } from 'react-window';
+import { List } from 'react-window';
 
 // -----------------------------------------------------------------------------
 // Sub-components
@@ -574,7 +574,7 @@ export default function ComparisonEngine({ onAddToPortfolio, onRemoveFromPortfol
               const cardHeight = 350; // Approximated card height + gap
 
               return (
-                 <FixedSizeList
+                 <List
                    style={{ height, width }}
                    rowCount={rowCount}
                    rowHeight={cardHeight}
