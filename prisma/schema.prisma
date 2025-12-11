@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Etf {
@@ -37,7 +36,7 @@ model EtfHistory {
   date      DateTime
   close     Float
   interval  String   @default("daily")
-  etf       Etf      @relation(fields: [etfId], references: [ticker])
+  etf       Etf    @relation(fields: [etfId], references: [ticker])
 
   @@unique([etfId, date, interval])
 }

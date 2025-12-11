@@ -9,6 +9,16 @@ const prismaClientSingleton = () => {
   }
   const connectionString = process.env.DATABASE_URL;
 
+  // Check if we are using Prisma Accelerate (starts with prisma:// or prisma+postgres://)
+  if (connectionString.startsWith('prisma://') || connectionString.startsWith('prisma+postgres://')) {
+    // Accelerate Mode: Pass the URL directly to the constructor via accelerateUrl
+    // Note: In Prisma 7, do not use adapter with Accelerate URL.
+    return new PrismaClient({
+      accelerateUrl: connectionString
+    });
+  }
+
+  // Standard Postgres Mode (e.g. Local, VPS, or Direct Connection)
   const pool = new pg.Pool({
     connectionString,
     ssl: { rejectUnauthorized: false },
