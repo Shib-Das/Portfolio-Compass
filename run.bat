@@ -6,7 +6,7 @@ echo 🧭 PortfolioCompass Initialization Sequence...
 REM 1. Config
 if not exist .env (
     echo ⚠️  No .env file found. Creating default configuration...
-    echo DATABASE_URL="postgresql://postgres:postgres@localhost:5432/portfolio_compass?schema=public" > .env
+    echo DATABASE_URL="postgresql://postgres:password@localhost:5432/portfolio_db?schema=public" > .env
     echo ✅ .env created.
 )
 
