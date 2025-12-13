@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     let etfs = await prisma.etf.findMany({
       where: whereClause,
       include: includeObj,
-      take: query ? 10 : 1000,
+      take: query ? 10 : 50,
     })
 
     if (query && etfs.length > 0 && etfs.length < 5) {
@@ -133,11 +133,34 @@ export async function GET(request: NextRequest) {
       changePercent: Number(etf.daily_change),
       assetType: etf.assetType,
       isDeepAnalysisLoaded: etf.isDeepAnalysisLoaded,
-      history: etf.history ? etf.history.map((h: any) => ({
-        date: h.date.toISOString(),
-        price: Number(h.close),
-        interval: h.interval
-      })) : [],
+      history: etf.history ? (() => {
+        const historyData = etf.history;
+        if (historyData.length <= 20) {
+           return historyData.map((h: any) => ({
+            date: h.date.toISOString(),
+            price: Number(h.close),
+            interval: h.interval
+          }));
+        }
+
+        // Downsample
+        const downsampled = [];
+        const target = 20;
+        const step = (historyData.length - 1) / (target - 1);
+
+        for (let i = 0; i < target; i++) {
+          const index = Math.round(i * step);
+          if (index < historyData.length) {
+            const h = historyData[index];
+            downsampled.push({
+              date: h.date.toISOString(),
+              price: Number(h.close),
+              interval: h.interval
+            });
+          }
+        }
+        return downsampled;
+      })() : [],
       metrics: {
           yield: etf.yield ? Number(etf.yield) : 0,
           mer: etf.mer ? Number(etf.mer) : 0
