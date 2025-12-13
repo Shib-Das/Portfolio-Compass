@@ -22,6 +22,7 @@ type Tab = 'TRENDING' | 'PORTFOLIO' | 'ETFS' | 'STOCKS' | 'GROWTH';
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>('LANDING');
   const [activeTab, setActiveTab] = useState<Tab>('TRENDING');
+  const [renderedTab, setRenderedTab] = useState<Tab>('TRENDING');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -31,6 +32,13 @@ export default function Home() {
   const removeStockMutation = useRemoveStock();
   const updatePortfolioItemMutation = useUpdatePortfolioItem();
   const queryClient = useQueryClient();
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    startTransition(() => {
+      setRenderedTab(tab);
+    });
+  };
 
   const handleStart = () => {
     setViewMode('APP');
@@ -86,7 +94,7 @@ export default function Home() {
           >
             <Navigation
               activeTab={activeTab}
-              onTabChange={(tab) => startTransition(() => setActiveTab(tab))}
+              onTabChange={handleTabChange}
               onBackToLanding={() => setViewMode('LANDING')}
               onOpenSettings={() => setIsSettingsOpen(true)}
             />
@@ -98,7 +106,7 @@ export default function Home() {
 
             <div className="flex-1 pt-16 relative">
               <AnimatePresence mode="wait">
-                {activeTab === 'TRENDING' && (
+                {renderedTab === 'TRENDING' && (
                   <TrendingTab
                     key="trending"
                     onAddToPortfolio={handleAddToPortfolio}
@@ -106,7 +114,7 @@ export default function Home() {
                     onRemoveFromPortfolio={handleRemoveFromPortfolio}
                   />
                 )}
-                {activeTab === 'PORTFOLIO' && (
+                {renderedTab === 'PORTFOLIO' && (
                   <PortfolioBuilder
                     key="portfolio"
                     portfolio={portfolio}
@@ -114,10 +122,10 @@ export default function Home() {
                     onUpdateWeight={handleUpdateWeight}
                     onUpdateShares={handleUpdateShares}
                     onClear={handleClearPortfolio}
-                    onViewGrowth={() => setActiveTab('GROWTH')}
+                    onViewGrowth={() => handleTabChange('GROWTH')}
                   />
                 )}
-                {activeTab === 'ETFS' && (
+                {renderedTab === 'ETFS' && (
                   <ComparisonEngine
                     key="etfs"
                     onAddToPortfolio={handleAddToPortfolio}
@@ -126,7 +134,7 @@ export default function Home() {
                     assetType="ETF"
                   />
                 )}
-                {activeTab === 'STOCKS' && (
+                {renderedTab === 'STOCKS' && (
                   <ComparisonEngine
                     key="stocks"
                     onAddToPortfolio={handleAddToPortfolio}
@@ -135,7 +143,7 @@ export default function Home() {
                     assetType="STOCK"
                   />
                 )}
-                {activeTab === 'GROWTH' && (
+                {renderedTab === 'GROWTH' && (
                   <WealthProjector key="growth" portfolio={portfolio} />
                 )}
               </AnimatePresence>
