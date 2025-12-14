@@ -31,7 +31,7 @@ export async function syncEtfDetails(ticker: string) {
       where: { ticker: details.ticker },
       update: {
         price: details.price, // Decimal
-        daily_change: details.dailyChange, // Decimal
+        daily_change: details.dailyChangePercent, // Decimal
         yield: details.dividendYield || null, // Decimal | null
         mer: details.expenseRatio || null, // Decimal | null
         name: details.name,
@@ -46,7 +46,7 @@ export async function syncEtfDetails(ticker: string) {
         currency: 'USD',
         exchange: 'Unknown',
         price: details.price, // Decimal
-        daily_change: details.dailyChange, // Decimal
+        daily_change: details.dailyChangePercent, // Decimal
         yield: details.dividendYield || null,
         mer: details.expenseRatio || null,
         assetType: details.assetType,
