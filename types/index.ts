@@ -1,5 +1,13 @@
 import { Decimal } from 'decimal.js';
 
+export interface Holding {
+  ticker: string;
+  name: string;
+  sector: string;
+  weight: number;
+  shares: number;
+}
+
 export interface ETF {
   ticker: string;
   name: string;
@@ -21,6 +29,7 @@ export interface ETF {
   sectors: {
     [key: string]: number;
   };
+  holdings?: Holding[];
 }
 
 export interface PortfolioItem extends ETF {
