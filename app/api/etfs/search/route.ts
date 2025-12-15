@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const includeObj: any = {
       sectors: true,
       allocation: true,
+      holdings: true, // Always include holdings if available
     };
     if (includeHistory) {
       includeObj.history = { orderBy: { date: 'asc' } };
@@ -227,6 +228,13 @@ export async function GET(request: NextRequest) {
           acc[sector.sector_name] = Number(sector.weight)
           return acc
         }, {} as { [key: string]: number }),
+        holdings: (etf.holdings || []).map((h: any) => ({
+            ticker: h.ticker,
+            name: h.name,
+            sector: h.sector,
+            weight: Number(h.weight),
+            shares: Number(h.shares)
+        })),
       };
     })
 

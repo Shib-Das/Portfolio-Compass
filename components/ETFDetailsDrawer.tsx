@@ -22,9 +22,19 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
   const [showComparison, setShowComparison] = useState(false);
   const [spyData, setSpyData] = useState<ETF | null>(null);
   const [freshEtf, setFreshEtf] = useState<ETF | null>(null);
+  const [viewMode, setViewMode] = useState<'sector' | 'holdings'>('sector');
 
   // Use fresh data if available, otherwise fall back to prop
   const displayEtf = freshEtf || etf;
+
+  // Set default view mode based on available data
+  useEffect(() => {
+    if (displayEtf?.holdings && displayEtf.holdings.length > 0) {
+      setViewMode('holdings');
+    } else {
+      setViewMode('sector');
+    }
+  }, [displayEtf?.holdings]);
 
   // Reset freshEtf when etf prop changes
   useEffect(() => {
@@ -451,13 +461,38 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
                 {/* Right Col */}
                 <div className="flex flex-col gap-6 h-full">
 
-                  {/* Sector Breakdown */}
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5 flex-1 min-h-[300px]">
-                    <div className="flex items-center gap-2 mb-4">
-                      <PieIcon className="w-5 h-5 text-blue-400" />
-                      <h3 className="text-lg font-bold text-white">
-                        {displayEtf.assetType === 'STOCK' ? 'Sector' : 'Sector Allocation'}
-                      </h3>
+                  {/* Sector Breakdown / Holdings */}
+                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5 flex-1 min-h-[300px] flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <PieIcon className="w-5 h-5 text-blue-400" />
+                        <h3 className="text-lg font-bold text-white">
+                          {displayEtf.assetType === 'STOCK' ? 'Sector' : (viewMode === 'holdings' ? 'Top Holdings' : 'Sector Allocation')}
+                        </h3>
+                      </div>
+
+                      {displayEtf.assetType !== 'STOCK' && displayEtf.holdings && displayEtf.holdings.length > 0 && (
+                        <div className="flex bg-black/20 rounded-lg p-1 gap-1">
+                          <button
+                            onClick={() => setViewMode('holdings')}
+                            className={cn(
+                              "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                              viewMode === 'holdings' ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
+                            )}
+                          >
+                            Holdings
+                          </button>
+                          <button
+                            onClick={() => setViewMode('sector')}
+                            className={cn(
+                              "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                              viewMode === 'sector' ? "bg-white/10 text-white" : "text-neutral-500 hover:text-neutral-300"
+                            )}
+                          >
+                            Sectors
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {displayEtf.assetType === 'STOCK' ? (
@@ -472,8 +507,41 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
                         </div>
                       </div>
                     ) : (
-                      <div className="h-[250px]">
-                        <SectorPieChart sectors={displayEtf.sectors} />
+                      <div className="flex-1 overflow-hidden">
+                        {viewMode === 'holdings' && displayEtf.holdings ? (
+                           <div className="h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                             <table className="w-full text-left text-sm">
+                               <thead className="sticky top-0 bg-[#171717] z-10 text-xs uppercase text-neutral-500 font-medium">
+                                 <tr>
+                                   <th className="pb-2">Name</th>
+                                   <th className="pb-2 text-right">Weight</th>
+                                 </tr>
+                               </thead>
+                               <tbody className="divide-y divide-white/5">
+                                 {displayEtf.holdings.map((holding, idx) => (
+                                   <tr key={idx} className="group hover:bg-white/5 transition-colors">
+                                     <td className="py-2 pr-4">
+                                       <div className="font-medium text-white truncate max-w-[140px]">{holding.name}</div>
+                                       <div className="text-xs text-neutral-500">{holding.ticker}</div>
+                                     </td>
+                                     <td className="py-2 text-right font-mono text-emerald-400">
+                                       {holding.weight.toFixed(2)}%
+                                     </td>
+                                   </tr>
+                                 ))}
+                               </tbody>
+                             </table>
+                             {displayEtf.holdings.length === 0 && (
+                               <div className="h-full flex items-center justify-center text-neutral-500">
+                                 No holdings data
+                               </div>
+                             )}
+                           </div>
+                        ) : (
+                          <div className="h-[250px]">
+                            <SectorPieChart sectors={displayEtf.sectors} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
