@@ -31,13 +31,14 @@ export default function TrendingTab({ onAddToPortfolio, portfolio = [], onRemove
 
     const [selectedItem, setSelectedItem] = useState<ETF | null>(null);
 
-    const MAG7_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'];
-    const JUSTBUY_TICKERS = ['XEQT.TO', 'VEQT.TO', 'VGRO.TO', 'XGRO.TO', 'VFV.TO', 'VUN.TO', 'ZEB.TO'];
+    const MAG7_TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'NFLX'];
+    const JUSTBUY_TICKERS = ['XEQT.TO', 'VEQT.TO', 'VGRO.TO', 'XGRO.TO', 'VFV.TO', 'VUN.TO', 'ZEB.TO', 'XIU.TO'];
     const NATURAL_RESOURCES_TICKERS = [
         'XLE', 'XOP', 'CVX', 'XOM', 'SHEL', 'COP', // Energy
         'RIO', 'BHP', 'VALE', 'NEM', 'FCX', // Mining
         'GLD', 'SLV', 'GDX', 'SIL', // Precious Metals
-        'MOO', 'PHO' // Ag/Water
+        'MOO', 'PHO', // Ag/Water
+        'URA', 'LIT', 'WOOD' // Thematic
     ];
 
     useEffect(() => {
@@ -93,8 +94,10 @@ export default function TrendingTab({ onAddToPortfolio, portfolio = [], onRemove
                 const validData = allData.filter(d => d.price > 0);
 
                 // Populate sections
-                setTrendingItems([...validData].sort((a, b) => b.changePercent - a.changePercent).slice(0, 50));
-                setDiscountedItems([...validData].sort((a, b) => a.changePercent - b.changePercent).slice(0, 50));
+                const trimTo4 = (arr: ETF[]) => arr.slice(0, arr.length - (arr.length % 4));
+
+                setTrendingItems(trimTo4([...validData].sort((a, b) => b.changePercent - a.changePercent).slice(0, 48)));
+                setDiscountedItems(trimTo4([...validData].sort((a, b) => a.changePercent - b.changePercent).slice(0, 48)));
                 setMag7Items(validData.filter(item => MAG7_TICKERS.includes(item.ticker)));
                 setJustBuyItems(validData.filter(item => JUSTBUY_TICKERS.includes(item.ticker)));
                 setNaturalResourcesItems(validData.filter(item => NATURAL_RESOURCES_TICKERS.includes(item.ticker)));
@@ -110,7 +113,7 @@ export default function TrendingTab({ onAddToPortfolio, portfolio = [], onRemove
         const fetchCrypto = async () => {
             setLoadingCrypto(true);
             try {
-                const ids = 'bitcoin,ethereum,solana,cardano,ripple';
+                const ids = 'bitcoin,ethereum,solana,cardano,ripple,dogecoin,binancecoin,avalanche-2';
                 const res = await fetch(`/api/proxy?path=simple/price&ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
                 if (!res.ok) throw new Error('Failed to fetch crypto data');
                 const data = await res.json();
