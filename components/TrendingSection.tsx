@@ -105,8 +105,9 @@ export default function TrendingSection({
                         <motion.div
                             key={etf.ticker}
                             variants={item}
+                            onClick={() => onSelectItem(etf)}
                             className={cn(
-                                "group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1",
+                                "group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 cursor-pointer",
                                 styles.border, styles.shadow,
                                 inPortfolio && "shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)] border-emerald-500/30"
                             )}
@@ -175,32 +176,43 @@ export default function TrendingSection({
                             </div>
 
                             {/* Hover Overlay */}
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                                {inPortfolio ? (
-                                    <button
-                                        onClick={() => onRemoveFromPortfolio?.(etf.ticker)}
-                                        className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-75 shadow-lg"
-                                        title="Remove from Portfolio"
-                                    >
-                                        <Trash2 className="w-6 h-6" />
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => onAddToPortfolio(etf)}
-                                        className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-75 shadow-lg"
-                                        title="Add to Portfolio"
-                                    >
-                                        <Plus className="w-6 h-6" />
-                                    </button>
-                                )}
+                            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                                <div className="flex gap-3 pointer-events-auto">
+                                    {inPortfolio ? (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onRemoveFromPortfolio?.(etf.ticker);
+                                            }}
+                                            className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-75 shadow-lg"
+                                            title="Remove from Portfolio"
+                                        >
+                                            <Trash2 className="w-6 h-6" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAddToPortfolio(etf);
+                                            }}
+                                            className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-75 shadow-lg"
+                                            title="Add to Portfolio"
+                                        >
+                                            <Plus className="w-6 h-6" />
+                                        </button>
+                                    )}
 
-                                <button
-                                    onClick={() => onSelectItem(etf)}
-                                    className="bg-white text-black hover:bg-neutral-200 p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-100 shadow-lg"
-                                    title="View Details"
-                                >
-                                    <ArrowUpRight className="w-6 h-6" />
-                                </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSelectItem(etf);
+                                        }}
+                                        className="bg-white text-black hover:bg-neutral-200 p-3 rounded-full transform scale-0 group-hover:scale-100 transition-all duration-300 delay-100 shadow-lg"
+                                        title="View Details"
+                                    >
+                                        <ArrowUpRight className="w-6 h-6" />
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     );
