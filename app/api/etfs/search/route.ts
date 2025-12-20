@@ -334,7 +334,7 @@ export async function GET(request: NextRequest) {
       let history = etf.history ? etf.history.map((h: any) => ({
         date: h.date instanceof Date ? h.date.toISOString() : h.date, // Handle non-Date mocks/fallbacks if any
         price: Number(h.close),
-        interval: h.interval
+        interval: h.interval || undefined // Ensure undefined if null for Zod
       })) : [];
 
       // Downsampling Logic: If not requesting full history and we have a lot of points,

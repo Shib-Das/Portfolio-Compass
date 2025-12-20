@@ -23,18 +23,6 @@ export async function GET() {
             },
         });
 
-        // Map Prisma Decimal to number/Decimal as needed by the frontend types
-        // Since we are sending JSON, Decimal will be serialized (usually to string)
-        // However, the interface `PortfolioItem` in `types/index.ts` accepts `number | Decimal`.
-        // If we want to return Numbers to the frontend (Option A), we convert here.
-        // OR we return strings and let the frontend parse.
-        // Given Option A's "conversion at the edge", converting to Number HERE is the easiest "edge"
-        // before the frontend even sees it, ensuring standard JSON numbers.
-        // BUT `decimal.js` handles precision better. If we convert to Number here, we lose precision on the wire.
-        // But the user chose "Option A" to solve *compilation errors* and *UI issues*.
-        // If I return numbers here, the frontend (which expects number | Decimal) will receive numbers.
-        // This satisfies "Option A" cleanly.
-
         const formattedPortfolio: any[] = portfolioItems.map((item) => ({
             ticker: item.etf.ticker,
             name: item.etf.name,
@@ -48,7 +36,7 @@ export async function GET() {
             history: item.etf.history.map((h: EtfHistory) => ({
                 date: h.date.toISOString(),
                 price: Number(h.close),
-                interval: h.interval
+                interval: h.interval || undefined
             })).reverse(),
             metrics: {
                 yield: item.etf.yield ? Number(item.etf.yield) : 0,
@@ -80,19 +68,35 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Ticker is required' }, { status: 400 });
         }
 
+        const safeDecimal = (val: any) => {
+            if (val === null || val === undefined) return new Decimal(0);
+            if (Decimal.isDecimal(val)) return val;
+            if (typeof val === 'string' && val.trim() === '') return new Decimal(0);
+            if (typeof val === 'number' && isNaN(val)) return new Decimal(0);
+            try {
+                return new Decimal(val);
+            } catch (e) {
+                return new Decimal(0);
+            }
+        };
+
+        const price = safeDecimal(newStock.price);
+        const dailyChange = safeDecimal(newStock.changePercent);
+
         await prisma.etf.upsert({
             where: { ticker: newStock.ticker },
             update: {
-                price: new Decimal(newStock.price),
-                daily_change: new Decimal(newStock.changePercent),
+                price: price,
+                daily_change: dailyChange,
             },
             create: {
                 ticker: newStock.ticker,
-                name: newStock.name,
-                price: new Decimal(newStock.price),
-                daily_change: new Decimal(newStock.changePercent),
+                name: newStock.name || newStock.ticker,
+                price: price,
+                daily_change: dailyChange,
                 assetType: newStock.assetType || 'ETF',
                 currency: 'USD',
+                isDeepAnalysisLoaded: false,
             },
         });
 
@@ -142,8 +146,6 @@ export async function PATCH(request: NextRequest) {
         if (weight !== undefined) updateData.weight = new Decimal(weight);
         if (shares !== undefined) updateData.shares = new Decimal(shares);
 
-        // We return the updated item. Prisma returns Decimals.
-        // We should format this back to number/string for the frontend.
         const updatedItem = await prisma.portfolioItem.update({
             where: { etfId: ticker },
             data: updateData,
