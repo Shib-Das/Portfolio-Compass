@@ -34,7 +34,7 @@ export const useAddStock = () => {
       const res = await fetch('/api/portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newStock),
+        body: JSON.stringify({ ticker: newStock.ticker }),
       });
       if (!res.ok) throw new Error('Failed to add stock');
       return res.json();
