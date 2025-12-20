@@ -308,31 +308,6 @@ export default function ComparisonEngine({ onAddToPortfolio, onRemoveFromPortfol
 
   // Pagination and sorting state
   const [visibleCount, setVisibleCount] = useState(12);
-  const [recentTickers, setRecentTickers] = useState<string[]>([]);
-
-  // Load recent tickers on mount
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('recent_tickers');
-      if (stored) {
-        setRecentTickers(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error("Failed to load recent tickers", e);
-    }
-  }, []);
-
-  const addToRecent = useCallback((ticker: string) => {
-    setRecentTickers(prev => {
-      const newRecent = [ticker, ...prev.filter(t => t !== ticker)].slice(0, 50);
-      try {
-        localStorage.setItem('recent_tickers', JSON.stringify(newRecent));
-      } catch (e) {
-        console.error("Failed to save recent tickers", e);
-      }
-      return newRecent;
-    });
-  }, []);
 
   const triggerFlash = useCallback((ticker: string, type: 'success' | 'error') => {
     setFlashStates(prev => ({ ...prev, [ticker]: type }));
@@ -465,7 +440,6 @@ export default function ComparisonEngine({ onAddToPortfolio, onRemoveFromPortfol
   };
 
   const handleAdvancedView = useCallback(async (etf: ETF) => {
-    addToRecent(etf.ticker);
     if (etf.isDeepAnalysisLoaded) {
       setSelectedETF(etf);
       return;
@@ -519,7 +493,7 @@ export default function ComparisonEngine({ onAddToPortfolio, onRemoveFromPortfol
     } finally {
       setSyncingTicker(null);
     }
-  }, [addToRecent]); // addToRecent is stable (useCallback)
+  }, []);
 
   const renderNoResults = () => {
     if (loading) return null;
@@ -578,20 +552,7 @@ export default function ComparisonEngine({ onAddToPortfolio, onRemoveFromPortfol
     }
   };
 
-  // Sort ETFs: Recent first, then original order
-  const sortedEtfs = useMemo(() => {
-    if (recentTickers.length === 0) return etfs;
-    return [...etfs].sort((a, b) => {
-      const indexA = recentTickers.indexOf(a.ticker);
-      const indexB = recentTickers.indexOf(b.ticker);
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      return 0;
-    });
-  }, [etfs, recentTickers]);
-
-  const displayedEtfs = sortedEtfs.slice(0, visibleCount);
+  const displayedEtfs = etfs.slice(0, visibleCount);
 
   return (
     <section className="py-12 md:py-24 px-4 max-w-7xl mx-auto h-[calc(100dvh-64px)] overflow-y-auto">
