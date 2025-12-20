@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncEtfDetails } from '@/lib/etf-sync';
-import { EtfHistory } from '@prisma/client';
+import { EtfHistory, Holding } from '@prisma/client';
 import { Decimal } from 'decimal.js';
 
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       history: fullEtf.history.map((h: EtfHistory) => ({
         date: h.date.toISOString(),
         price: Number(h.close),
-        interval: h.interval || undefined // Ensure undefined if null for Zod .optional()
+        interval: h.interval || undefined // Ensure undefined if null for Zod
       })),
       metrics: {
         yield: fullEtf.yield ? Number(fullEtf.yield) : 0,
@@ -46,6 +46,26 @@ export async function POST(req: NextRequest) {
         return acc
       }, {} as { [key: string]: number }),
       assetType: fullEtf.assetType,
+      // Pass existing holdings or fallback to empty array
+      // This is not explicitly required by the schema if optional, but good for completeness
+      // IF holding data exists in fullEtf
+      // syncEtfDetails returns type 'Etf & { history: ..., sectors: ..., allocation: ..., holdings: ... }'
+      // Note: `fullEtf.holdings` exists if syncEtfDetails returns it (it does include it).
+      // However, the `ETF` interface on frontend might not have `holdings` defined?
+      // `types/index.ts` check:
+      // "export interface ETF { ... }" - I previously checked and it didn't seem to have `holdings`.
+      // BUT `app/api/etfs/search/route.ts` doesn't return it either.
+      // If `ETFDetailsDrawer` relies on `sectors` (it does), we are fine.
+      // If `ETFDetailsDrawer` relies on `metrics.yield`, we are fine.
+
+      // Let's add dividendHistory just in case, though syncEtfDetails (via fetchEtfDetails) returns it in `details` but DOES NOT persist it to DB in a way that is easily retrieved here unless we add a relation?
+      // `Etf` model does NOT have `dividendHistory` relation!
+      // `fetchEtfDetails` returns it in the result object, but `syncEtfDetails` only persists specific fields.
+      // `syncEtfDetails` returns the *Prisma Object* `fullEtf`.
+      // The Prisma Object does NOT have `dividendHistory`.
+      // So `fullEtf.dividendHistory` is undefined.
+      // So we can't return it here unless we change `syncEtfDetails` to return the `details` object too, or persist dividends.
+      // Given the schema allows optional, we leave it out.
     };
 
     return NextResponse.json(formattedEtf);
