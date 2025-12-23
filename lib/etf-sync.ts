@@ -3,7 +3,7 @@ import { fetchEtfDetails } from '@/lib/market-service'
 import { getEtfHoldings } from '@/lib/scrapers/stock-analysis'
 import { Decimal } from 'decimal.js';
 import { Prisma } from '@prisma/client';
-import { YahooFinance } from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 const yf = new YahooFinance({
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
