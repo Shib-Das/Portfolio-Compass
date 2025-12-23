@@ -229,10 +229,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (etfs.length === 0 && query && query.length > 1) {
-      console.log(`[API] Local miss for "${query}". Processing fallback strategy...`);
+    // Identify potential missing tickers from the query
+    const queryTargets = query ? query.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0) : [];
+    // Only treat as ticker if reasonable length and no spaces to avoid syncing generic terms
+    const potentialTickers = queryTargets.filter(t => t.length <= 10 && !t.includes(' '));
+    const currentFoundTickerSet = new Set(etfs.map((e: any) => e.ticker));
+    const hasMissingExactMatch = potentialTickers.some(t => !currentFoundTickerSet.has(t));
 
-      const targets = query.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0);
+    // Fallback strategy:
+    // 1. If we found NO results at all (etfs.length === 0)
+    // 2. OR if we have a "ticker-like" query that is missing from the results
+    // We only trigger this on the first page (skip === 0) to avoid issues during pagination
+    if ((etfs.length === 0 || hasMissingExactMatch) && query && query.length > 1 && skip === 0) {
+      console.log(`[API] Local miss for "${query}" (Exact missing: ${hasMissingExactMatch}). Processing fallback strategy...`);
+
+      const targets = queryTargets;
       // Limit to 5 to prevent abuse
       const limitedTargets = targets.slice(0, 5);
 
