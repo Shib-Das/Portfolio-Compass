@@ -134,7 +134,7 @@ export default function StockInfoCard({ ticker }: StockInfoCardProps) {
 
         {/* Description & Sector */}
         <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex flex-col items-center justify-center h-28 w-28 shrink-0 rounded-lg bg-stone-800/50 p-2 text-center border border-white/5 shadow-inner">
+            <div className="flex flex-col items-center justify-center h-28 w-28 shrink-0 p-2 text-center">
                 <Layers className="h-6 w-6 text-emerald-500 mb-2" />
                 <Badge variant="secondary" className="mb-1 text-[10px] h-4 px-1.5 pointer-events-none">
                     SECTOR
