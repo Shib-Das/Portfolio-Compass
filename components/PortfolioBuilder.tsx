@@ -175,7 +175,7 @@ export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, 
                   isValid ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-rose-500/10 border-rose-500/30 text-rose-400"
                 )}>
                   <span className="font-medium">Total Allocation</span>
-                  <span className="font-bold text-xl">{totalWeight.toNumber().toFixed(1)}%</span>
+                  <span className="font-bold text-xl">{totalWeight.toNumber().toFixed(2)}%</span>
                 </div>
               </div>
             )}
@@ -285,7 +285,7 @@ export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, 
                     {pieData.map((entry, index) => (
                       <tr key={index}>
                         <td>{entry.name}</td>
-                        <td>{entry.value.toFixed(1)}%</td>
+                        <td>{entry.value.toFixed(2)}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -298,7 +298,7 @@ export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, 
                   <div key={entry.name} className="flex items-center gap-2 text-xs text-neutral-400">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                     <span className="truncate">{entry.name}</span>
-                    <span className="ml-auto text-white">{entry.value.toFixed(1)}%</span>
+                    <span className="ml-auto text-white">{entry.value.toFixed(2)}%</span>
                   </div>
                 ))}
               </div>
