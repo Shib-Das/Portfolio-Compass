@@ -277,7 +277,7 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
                 </div>
                 {/* Overlay Text */}
                 <div className="absolute top-2 left-4 text-xs text-stone-500 font-mono">
-                  PROJECTION: +{((Math.pow(1 + (0.02 + (riskValue / 100) * 0.13), yearsValue) - 1) * 100).toFixed(0)}%
+                  PROJECTION: +{((Math.pow(1 + (0.02 + (riskValue / 100) * 0.13), yearsValue) - 1) * 100).toFixed(2)}%
                 </div>
               </div>
 

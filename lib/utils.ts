@@ -11,6 +11,8 @@ export function formatCurrency(value: number | Decimal) {
   return new Intl.NumberFormat('en-CA', {
     style: 'currency',
     currency: 'CAD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(val)
 }
 
@@ -21,6 +23,14 @@ export function formatPercentage(value: number | Decimal) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(val / 100)
+}
+
+export function formatNumber(value: number | Decimal, options?: { minimumFractionDigits?: number, maximumFractionDigits?: number }) {
+  const val = typeof value === 'number' ? value : value.toNumber();
+  return new Intl.NumberFormat('en-CA', {
+    minimumFractionDigits: options?.minimumFractionDigits ?? 2,
+    maximumFractionDigits: options?.maximumFractionDigits ?? 2,
+  }).format(val);
 }
 
 export interface RiskMetric {

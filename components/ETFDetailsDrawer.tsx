@@ -563,7 +563,7 @@ export default function ETFDetailsDrawer({ etf, onClose, onTickerSelect }: ETFDe
                                     <div key={index} className="flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                                         <span className="text-neutral-300 truncate">{item.name}</span>
-                                        <span className="text-neutral-500 ml-auto">{item.value.toFixed(1)}%</span>
+                                        <span className="text-neutral-500 ml-auto">{item.value.toFixed(2)}%</span>
                                     </div>
                                 ))}
                             </div>
@@ -675,7 +675,7 @@ export default function ETFDetailsDrawer({ etf, onClose, onTickerSelect }: ETFDe
                                                     <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
                                                         <div className="h-full bg-emerald-500 rounded-full opacity-80" style={{ width: `${Math.min(h.displayWeight * 3, 100)}%` }} />
                                                     </div>
-                                                    <div className="text-emerald-400 text-xs w-8 text-right font-mono">{h.displayWeight.toFixed(1)}%</div>
+                                                    <div className="text-emerald-400 text-xs w-8 text-right font-mono">{h.displayWeight.toFixed(2)}%</div>
                                                 </div>
                                             </div>
                                         ))}
