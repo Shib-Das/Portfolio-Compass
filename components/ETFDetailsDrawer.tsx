@@ -7,6 +7,7 @@ import { ETF } from '@/types';
 import { cn, formatCurrency, calculateRiskMetric } from '@/lib/utils';
 import { calculateTTMYield } from '@/lib/finance';
 import { getAssetIconUrl } from '@/lib/etf-providers';
+import { getProviderLogo, getAssetIconUrl } from '@/lib/etf-providers
 import SectorPieChart, { COLORS } from './SectorPieChart';
 import StockInfoCard from './StockInfoCard';
 import { useMemo, useState, useEffect } from 'react';
@@ -14,6 +15,7 @@ import { useMemo, useState, useEffect } from 'react';
 interface ETFDetailsDrawerProps {
   etf: ETF | null;
   onClose: () => void;
+  onTickerSelect?: (ticker: string) => void;
 }
 
 const TIME_RANGES = ['1D', '1W', '1M', '1Y', '5Y'];
@@ -25,7 +27,34 @@ const formatSectorName = (name: string) => {
     .join(' ');
 };
 
-export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps) {
+function formatLargeNumber(num: number | undefined): string {
+    if (num === undefined) return 'n/a';
+    if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+    return num.toLocaleString();
+}
+
+function formatNumber(num: number | undefined, decimals = 2): string {
+    if (num === undefined) return 'n/a';
+    return num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Compact card for the Metrics grid
+function MetricCard({ label, value, subValue, highlight }: { label: string; value: string; subValue?: string; highlight?: boolean }) {
+    return (
+        <div className="bg-white/5 rounded-xl p-3 border border-white/5 hover:bg-white/10 transition-colors group">
+            <div className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-1 truncate group-hover:text-neutral-300 transition-colors">{label}</div>
+            <div className={cn("text-sm font-bold truncate font-mono", highlight ? "text-emerald-400" : "text-white")}>
+                {value}
+            </div>
+            {subValue && <div className="text-[10px] text-neutral-500 mt-0.5">{subValue}</div>}
+        </div>
+    )
+}
+
+export default function ETFDetailsDrawer({ etf, onClose, onTickerSelect }: ETFDetailsDrawerProps) {
   const [timeRange, setTimeRange] = useState('1M');
   const [showComparison, setShowComparison] = useState(false);
   const [spyData, setSpyData] = useState<ETF | null>(null);
@@ -168,10 +197,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
 
     if (showComparison && spyData && spyData.history) {
       // Re-implement filter logic for SPY to match ETF
-      // We can't reuse the exact function scope but we can replicate the logic
-      // Ideally we would extract filterAndSort but for now let's duplicate the simple logic or find a way to share
-      // Let's just create a helper inside since we need targetInterval/cutoffDate
-
       let targetInterval = '1wk';
       const now = new Date();
       const cutoffDate = new Date();
@@ -196,7 +221,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
         if (spyHistory.length === 0) return null;
 
         const targetTime = targetDate.getTime();
-        // Tolerance: 30 minutes for 1h/1d, 1 day for 1w/1m/1y
         const tolerance = (timeRange === '1D' || timeRange === '1W')
           ? 30 * 60 * 1000
           : 24 * 60 * 60 * 1000;
@@ -221,7 +245,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
 
       if (filteredEtfHistory.length > 0) {
         const etfStart = filteredEtfHistory[0].price;
-        // Find closest SPY start price to align the charts
         const spyStartPrice = getSpyPriceAt(new Date(filteredEtfHistory[0].date));
         const spyStart = spyStartPrice || (spyHistory.length > 0 ? spyHistory[0].price : 1);
 
@@ -261,7 +284,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
   const sectorData = useMemo(() => {
     if (!displayEtf) return [];
 
-    // 1. Try Sectors
     if (displayEtf.sectors && Object.keys(displayEtf.sectors).length > 0) {
         const raw = Object.entries(displayEtf.sectors).map(([name, value]) => ({
             name: formatSectorName(name),
@@ -269,7 +291,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
         }));
 
         const total = raw.reduce((sum, item) => sum + item.value, 0);
-        // If total is small (e.g. <= 1.5), assume decimals and convert to percent
         const shouldScale = total <= 1.5;
 
         return raw.map(item => ({
@@ -278,9 +299,7 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
         })).sort((a, b) => b.value - a.value);
     }
 
-    // 2. Fallback: Holdings (Top 10 by weight)
     if (displayEtf.holdings && displayEtf.holdings.length > 0) {
-        // Detect if weights are already percentages
         const sampleSum = displayEtf.holdings.reduce((acc, h) => acc + h.weight, 0);
         const isPercentage = sampleSum > 1.5;
 
@@ -288,7 +307,7 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
             .slice(0, 10)
             .map(h => ({
                 name: h.name || h.ticker,
-                value: isPercentage ? h.weight : h.weight * 100 // Convert to percentage (0.05 -> 5.0)
+                value: isPercentage ? h.weight : h.weight * 100
             }))
             .sort((a, b) => b.value - a.value);
     }
@@ -299,7 +318,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
   const allHoldings = useMemo(() => {
     if (!displayEtf?.holdings) return [];
 
-    // Detect if weights are already percentages
     const sampleSum = displayEtf.holdings.reduce((acc, h) => acc + h.weight, 0);
     const isPercentage = sampleSum > 1.5;
 
@@ -307,7 +325,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
         .sort((a, b) => b.weight - a.weight)
         .map(h => ({
             ...h,
-            // Create a normalized value for display
             displayWeight: isPercentage ? h.weight : h.weight * 100
         }));
   }, [displayEtf]);
@@ -470,7 +487,6 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
                               return [`${value.toFixed(2)}%`, displayEtf.ticker];
                             }
                             if (name === 'spyPrice') {
-                              // Show original SPY price if available
                               const original = item.payload.originalSpyPrice;
                               return [original ? formatCurrency(original) : 'N/A', 'SPY'];
                             }
@@ -524,10 +540,12 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
 
                 {/* Right Col Wrapper */}
                 <div className="lg:col-span-1 lg:h-full lg:overflow-y-auto space-y-6 pr-2 custom-scrollbar">
-                  {/* Sector Breakdown or Stock Info */}
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5 min-h-[300px] flex flex-col">
+
+                  {/* Top Box: Description / Sector */}
+                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5 min-h-[200px] flex flex-col">
                     {displayEtf.assetType === 'STOCK' ? (
                       <div className="flex-1 min-h-0">
+                        {/* Only basic info here */}
                         <StockInfoCard ticker={displayEtf.ticker} />
                       </div>
                     ) : (
@@ -574,15 +592,38 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
 
                                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 max-h-[300px]">
                                     {allHoldings.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className="space-y-1">
                                             {allHoldings.map((h, i) => (
-                                                <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                                                    <div>
-                                                        <div className="font-bold text-white text-sm">{h.ticker}</div>
-                                                        <div className="text-xs text-neutral-400 truncate max-w-[120px]">{h.name}</div>
+                                                <div
+                                                    key={i}
+                                                    className={cn(
+                                                        "flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-all",
+                                                        onTickerSelect && "cursor-pointer hover:border-emerald-500/30 hover:shadow-[0_0_15px_rgba(16,185,129,0.1)] group/item"
+                                                    )}
+                                                    onClick={() => onTickerSelect && onTickerSelect(h.ticker)}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        {getAssetIconUrl(h.ticker, h.name || '', 'STOCK') && (
+                                                            <div className="w-6 h-6 rounded-full bg-white p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
+                                                                <img
+                                                                    src={getAssetIconUrl(h.ticker, h.name || '', 'STOCK')!}
+                                                                    alt={h.ticker}
+                                                                    className="w-full h-full object-contain"
+                                                                    onError={(e) => {
+                                                                        e.currentTarget.style.display = 'none';
+                                                                        e.currentTarget.parentElement!.style.display = 'none';
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        <div className={cn("font-bold text-white text-sm", onTickerSelect && "group-hover/item:text-emerald-400 transition-colors")}>{h.ticker}</div>
+                                                        <div className="text-xs text-neutral-400 truncate max-w-[100px] hidden sm:block">{h.name}</div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="text-emerald-400 font-medium text-sm">{h.displayWeight.toFixed(2)}%</div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden hidden sm:block">
+                                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(h.displayWeight * 2, 100)}%` }} />
+                                                        </div>
+                                                        <div className="text-emerald-400 font-medium text-sm w-12 text-right">{h.displayWeight.toFixed(2)}%</div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -596,34 +637,74 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-row h-[250px] gap-4">
+                            <div className="flex flex-row h-[250px] gap-6">
                                 {/* Left: Holdings List */}
-                                <div
-                                    className="w-1/2 flex flex-col cursor-pointer hover:bg-white/5 p-2 rounded-xl transition-colors group"
-                                    onClick={() => setShowAllHoldings(true)}
-                                >
-                                    <div className="text-xs font-semibold text-neutral-400 mb-2 group-hover:text-white transition-colors">Top Holdings</div>
+                                <div className="w-1/2 flex flex-col">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Top Holdings</div>
+                                        {allHoldings.length > 5 && (
+                                            <button
+                                                onClick={() => setShowAllHoldings(true)}
+                                                className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium hover:underline"
+                                            >
+                                                See all {allHoldings.length}...
+                                            </button>
+                                        )}
+                                    </div>
                                     <div className="flex-1 overflow-y-hidden space-y-2">
                                         {topHoldings.map((h, i) => (
-                                            <div key={i} className="flex items-center justify-between text-xs">
-                                                <div className="font-medium text-white truncate max-w-[80px]">{h.ticker}</div>
-                                                <div className="text-emerald-400">{h.displayWeight.toFixed(1)}%</div>
+                                            <div
+                                                key={i}
+                                                className={cn(
+                                                    "flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 transition-colors group/row",
+                                                    onTickerSelect && "cursor-pointer"
+                                                )}
+                                                onClick={() => onTickerSelect && onTickerSelect(h.ticker)}
+                                            >
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {getAssetIconUrl(h.ticker, h.name || '', 'STOCK') && (
+                                                        <div className="w-5 h-5 rounded-full bg-white p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
+                                                            <img
+                                                                src={getAssetIconUrl(h.ticker, h.name || '', 'STOCK')!}
+                                                                alt={h.ticker}
+                                                                className="w-full h-full object-contain"
+                                                                onError={(e) => {
+                                                                    e.currentTarget.style.display = 'none';
+                                                                    e.currentTarget.parentElement!.style.display = 'none';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <div className={cn("font-medium text-white text-sm truncate", onTickerSelect && "group-hover/row:text-emerald-400 transition-colors")}>
+                                                        {h.ticker}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-emerald-500 rounded-full opacity-80" style={{ width: `${Math.min(h.displayWeight * 3, 100)}%` }} />
+                                                    </div>
+                                                    <div className="text-emerald-400 text-xs w-8 text-right font-mono">{h.displayWeight.toFixed(1)}%</div>
+                                                </div>
                                             </div>
                                         ))}
                                         {topHoldings.length === 0 && (
-                                            <div className="text-neutral-500 text-xs italic">No holdings data</div>
-                                        )}
-                                        {allHoldings.length > 5 && (
-                                            <div className="text-xs text-blue-400 mt-2 font-medium">See all {allHoldings.length}...</div>
+                                            <div className="text-neutral-500 text-xs italic p-2">No holdings data available</div>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Right: Pie Chart */}
-                                <div className="w-1/2 relative">
+                                <div className="w-1/2 relative bg-white/5 rounded-xl border border-white/5 p-2 flex items-center justify-center">
+                                    <div className="absolute top-2 left-2 z-10">
+                                         <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-sm">Allocation</div>
+                                    </div>
                                     <SectorPieChart
                                         data={sectorData}
                                         isLoading={false}
+                                        onSectorClick={(sector) => {
+                                            // Optional: Filter holdings by sector?
+                                            // For now just visual
+                                        }}
                                     />
                                     {(!displayEtf.sectors || Object.keys(displayEtf.sectors).length === 0) && (
                                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -638,35 +719,91 @@ export default function ETFDetailsDrawer({ etf, onClose }: ETFDetailsDrawerProps
                   </div>
 
                   {/* Metrics Grid */}
-                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5">
-                    <h3 className="text-lg font-bold text-white mb-4">Key Metrics</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {displayEtf.assetType !== 'STOCK' && (
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                          <div className="text-xs text-neutral-400 mb-1">MER</div>
-                          <div className="text-xl font-bold text-white">{displayEtf.metrics.mer.toFixed(2)}%</div>
+                  <div className="bg-white/5 rounded-2xl p-6 border border-white/5 flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                    <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                        Key Metrics
+                    </h3>
+
+                    {displayEtf.assetType === 'STOCK' ? (
+                        <div className="space-y-8">
+                            {/* Valuation Section */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider pl-1">Valuation</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <MetricCard label="Market Cap" value={formatLargeNumber(displayEtf.marketCap)} />
+                                    <MetricCard label="PE Ratio" value={formatNumber(displayEtf.peRatio)} />
+                                    <MetricCard label="Forward PE" value={formatNumber(displayEtf.forwardPe)} />
+                                    <MetricCard label="EPS (ttm)" value={formatNumber(displayEtf.eps)} />
+                                </div>
+                            </div>
+
+                            {/* Dividends & Returns */}
+                            {(displayEtf.dividend || displayEtf.dividendYield) && (
+                                <div className="space-y-3">
+                                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider pl-1">Dividends</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <MetricCard
+                                            label="Div Yield"
+                                            value={displayEtf.dividendYield ? `${displayEtf.dividendYield.toFixed(2)}%` : 'n/a'}
+                                            highlight={!!displayEtf.dividendYield}
+                                        />
+                                        <MetricCard label="Dividend" value={displayEtf.dividend ? formatCurrency(displayEtf.dividend) : 'n/a'} />
+                                        <MetricCard label="Ex-Div Date" value={displayEtf.exDividendDate || 'n/a'} />
+                                        <MetricCard label="Earnings Date" value={displayEtf.earningsDate || 'n/a'} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Market Performance */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider pl-1">Trading</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <MetricCard label="Beta" value={formatNumber(displayEtf.beta)} />
+                                    <MetricCard label="Volume" value={displayEtf.volume ? (displayEtf.volume > 1e6 ? (displayEtf.volume/1e6).toFixed(1) + 'M' : displayEtf.volume.toLocaleString()) : 'n/a'} />
+                                    <MetricCard label="52W High" value={formatNumber(displayEtf.fiftyTwoWeekHigh)} />
+                                    <MetricCard label="52W Low" value={formatNumber(displayEtf.fiftyTwoWeekLow)} />
+                                </div>
+                            </div>
+
+                            {/* Financials */}
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider pl-1">Financials</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <MetricCard label="Revenue" value={formatLargeNumber(displayEtf.revenue)} />
+                                    <MetricCard label="Net Income" value={formatLargeNumber(displayEtf.netIncome)} />
+                                    <MetricCard label="Shares Out" value={formatLargeNumber(displayEtf.sharesOutstanding)} />
+                                </div>
+                            </div>
                         </div>
-                      )}
-                      <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                        <div className="text-xs text-neutral-400 mb-1">Yield (TTM)</div>
-                        <div className="text-xl font-bold text-emerald-400">
-                          {displayEtf.dividendHistory && displayEtf.dividendHistory.length > 0
-                            ? calculateTTMYield(displayEtf.dividendHistory, displayEtf.price).toFixed(2)
-                            : displayEtf.metrics.yield.toFixed(2)}%
-                        </div>
-                      </div>
-                      <div className="col-span-2 p-4 rounded-xl bg-white/5 border border-white/5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-xs text-neutral-400 mb-1">Volatility ({timeRange})</div>
-                            <div className={cn("text-xl font-bold", riskData?.color)}>{riskData ? (riskData.stdDev! * 100).toFixed(2) : 'N/A'}%</div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                            <div className="text-xs text-neutral-400 mb-1">MER</div>
+                            <div className="text-xl font-bold text-white">
+                              {displayEtf.metrics?.mer ? displayEtf.metrics.mer.toFixed(2) : 'N/A'}%
+                            </div>
                           </div>
-                          {riskData && (
-                            <AlertTriangle className={cn("w-8 h-8 opacity-50", riskData.color)} />
-                          )}
+                          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                            <div className="text-xs text-neutral-400 mb-1">Yield (TTM)</div>
+                            <div className="text-xl font-bold text-emerald-400">
+                              {displayEtf.dividendHistory && displayEtf.dividendHistory.length > 0
+                                ? calculateTTMYield(displayEtf.dividendHistory, displayEtf.price).toFixed(2)
+                                : (displayEtf.metrics?.yield ? displayEtf.metrics.yield.toFixed(2) : 'N/A')}%
+                            </div>
+                          </div>
+                          <div className="col-span-2 p-4 rounded-xl bg-white/5 border border-white/5">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-xs text-neutral-400 mb-1">Volatility ({timeRange})</div>
+                                <div className={cn("text-xl font-bold", riskData?.color)}>{riskData ? (riskData.stdDev! * 100).toFixed(2) : 'N/A'}%</div>
+                              </div>
+                              {riskData && (
+                                <AlertTriangle className={cn("w-8 h-8 opacity-50", riskData.color)} />
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
