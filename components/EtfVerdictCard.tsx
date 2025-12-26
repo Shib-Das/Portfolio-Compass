@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, ChevronDown, ChevronUp, ShieldCheck, Zap, TrendingUp as TrendingUpIcon } from 'lucide-react';
 import { analyzeEtf } from '@/lib/etf-analysis';
 import { ETF } from '@/types';
 import { cn } from '@/lib/utils';
@@ -8,18 +8,18 @@ import { useState } from 'react';
 const EXPLANATIONS: Record<string, { title: string; meaning: string; thresholds: string }> = {
   cost: {
     title: "Management Expense Ratio (MER)",
-    meaning: "The MER is the annual fee deducted from your returns to pay for the fund's management. Over decades, even small fee differences can significantly impact total wealth.",
-    thresholds: "Rating Criteria: Low < 0.40% | Moderate 0.40-0.75% | High > 0.75%"
+    meaning: "The MER is the annual fee deducted from your returns. Lower is better.",
+    thresholds: "Low < 0.40% | Moderate 0.40-0.75% | High > 0.75%"
   },
   liquidity: {
     title: "Average Daily Volume",
-    meaning: "Liquidity refers to how easily you can buy or sell shares without causing a price impact. Low liquidity can lead to 'slippage', where you pay more or sell for less than the market price.",
-    thresholds: "Rating Criteria: High > 1M | Moderate 100k-1M | Low < 100k"
+    meaning: "Liquidity determines ease of trade without price impact.",
+    thresholds: "High > 1M | Moderate 100k-1M | Low < 100k"
   },
   volatility: {
     title: "Beta (Market Sensitivity)",
-    meaning: "Beta measures how much this asset moves compared to the S&P 500. High beta (>1.0) means it exaggerates market moves; low beta (<1.0) means it's more stable.",
-    thresholds: "Rating Criteria: Low < 0.85 | Market ~1.0 | High > 1.25"
+    meaning: "Measures movement relative to S&P 500.",
+    thresholds: "Low < 0.85 | Market ~1.0 | High > 1.25"
   }
 };
 
@@ -27,27 +27,39 @@ export default function EtfVerdictCard({ etf, className }: { etf: ETF; className
   const verdict = analyzeEtf(etf);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
-  const getIcon = (status: string) => {
+  const getTheme = (status: string) => {
     switch (status) {
-      case 'good': return <CheckCircle className="w-5 h-5 text-emerald-400" />;
-      case 'warning': return <AlertTriangle className="w-5 h-5 text-rose-400" />;
-      default: return <Info className="w-5 h-5 text-blue-400" />;
-    }
-  };
-
-  const getColor = (status: string) => {
-    switch (status) {
-      case 'good': return "border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10";
-      case 'warning': return "border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10";
-      default: return "border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10";
+      case 'good': return {
+        color: 'text-emerald-400',
+        border: 'border-emerald-500/30',
+        bg: 'from-emerald-950/40 to-emerald-900/20',
+        glow: 'shadow-[0_0_20px_-5px_rgba(16,185,129,0.2)]',
+        icon: ShieldCheck
+      };
+      case 'warning': return {
+        color: 'text-rose-400',
+        border: 'border-rose-500/30',
+        bg: 'from-rose-950/40 to-rose-900/20',
+        glow: 'shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)]',
+        icon: AlertTriangle
+      };
+      default: return {
+        color: 'text-blue-400',
+        border: 'border-blue-500/30',
+        bg: 'from-blue-950/40 to-blue-900/20',
+        glow: 'shadow-[0_0_20px_-5px_rgba(59,130,246,0.2)]',
+        icon: Zap
+      };
     }
   };
 
   return (
-    <div className={cn("grid grid-cols-1 gap-4", className)}>
+    <div className={cn("grid grid-cols-1 gap-3", className)}>
       {Object.entries(verdict).map(([key, data]) => {
         const isExpanded = expandedKey === key;
         const explanation = EXPLANATIONS[key];
+        const theme = getTheme(data.status);
+        const Icon = theme.icon;
 
         return (
           <motion.div
@@ -55,25 +67,42 @@ export default function EtfVerdictCard({ etf, className }: { etf: ETF; className
             layout
             onClick={() => setExpandedKey(isExpanded ? null : key)}
             className={cn(
-              "p-4 rounded-xl border flex flex-col gap-2 cursor-pointer transition-colors relative overflow-hidden",
-              getColor(data.status)
+              "group relative overflow-hidden rounded-xl border p-4 cursor-pointer transition-all duration-300",
+              "bg-gradient-to-br backdrop-blur-sm",
+              theme.border,
+              theme.bg,
+              theme.glow
             )}
+            whileHover={{ scale: 1.02 }}
           >
-            <motion.div layout className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">{key}</span>
-              <div className="flex items-center gap-2">
-                {getIcon(data.status)}
-                {isExpanded ? <ChevronUp className="w-4 h-4 text-neutral-500" /> : <ChevronDown className="w-4 h-4 text-neutral-500" />}
+            {/* Background Watermark Icon */}
+            <Icon className={cn("absolute -right-4 -top-4 w-24 h-24 opacity-5 transition-transform duration-500 group-hover:scale-110", theme.color)} />
+
+            <motion.div layout className="relative z-10">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                    <span className={cn("text-[10px] font-bold uppercase tracking-[0.2em]", theme.color)}>
+                        {key}
+                    </span>
+                </div>
+                {isExpanded ?
+                    <ChevronUp className={cn("w-4 h-4 opacity-50", theme.color)} /> :
+                    <ChevronDown className={cn("w-4 h-4 opacity-50", theme.color)} />
+                }
               </div>
-            </motion.div>
 
-            <motion.div layout className="font-bold text-white text-lg">
-              {data.label}
-            </motion.div>
+              <div className="flex items-center gap-3 mb-1">
+                <h3 className="text-lg font-bold text-white tracking-tight">
+                    {data.label}
+                </h3>
+                {/* Status Indicator Dot */}
+                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_currentColor]", theme.color)} />
+              </div>
 
-            <motion.p layout className="text-xs text-neutral-400 leading-relaxed">
-              {data.description}
-            </motion.p>
+              <p className="text-xs text-neutral-400 leading-relaxed max-w-[90%]">
+                {data.description}
+              </p>
+            </motion.div>
 
             <AnimatePresence>
               {isExpanded && explanation && (
@@ -81,14 +110,22 @@ export default function EtfVerdictCard({ etf, className }: { etf: ETF; className
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="pt-3 mt-1 border-t border-white/10 text-xs"
+                  className="relative z-10 pt-4 mt-4 border-t border-white/10"
                 >
-                  <div className="font-semibold text-white mb-1">{explanation.title}</div>
-                  <p className="text-neutral-400 mb-2 leading-relaxed">
-                    {explanation.meaning}
-                  </p>
-                  <div className="text-[10px] font-mono text-neutral-500 bg-black/20 p-1.5 rounded">
-                    {explanation.thresholds}
+                  <div className="grid gap-3">
+                    <div>
+                        <div className="text-xs font-semibold text-white mb-1">{explanation.title}</div>
+                        <p className="text-[11px] text-neutral-400 leading-relaxed">
+                            {explanation.meaning}
+                        </p>
+                    </div>
+
+                    <div className="bg-black/40 rounded-lg p-2 border border-white/5">
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-500">
+                            <Info className="w-3 h-3" />
+                            <span>{explanation.thresholds}</span>
+                        </div>
+                    </div>
                   </div>
                 </motion.div>
               )}
