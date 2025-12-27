@@ -38,6 +38,7 @@ const PortfolioItemRow = memo(({ item, virtualRow, measureElement, onRemove, onU
                 width={32}
                 height={32}
                 onError={() => setImgError(true)}
+                unoptimized // Bypass Next.js optimization for external icons to prevent 502s from Vercel timeouts and reduce server load
               />
             </div>
           )}

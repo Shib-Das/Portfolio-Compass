@@ -11,6 +11,7 @@ import PortfolioItemRow from './PortfolioItemRow';
 import { Decimal } from 'decimal.js';
 import WealthProjector from './WealthProjector';
 import OptimizationPanel from './OptimizationPanel';
+import { useBatchUpdatePortfolio } from '@/hooks/useBatchUpdatePortfolio';
 
 const COLORS = ['#10b981', '#3b82f6', '#f43f5e', '#f59e0b', '#8b5cf6'];
 
@@ -25,6 +26,8 @@ interface PortfolioBuilderProps {
 export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, onUpdateShares, onClear }: PortfolioBuilderProps) {
   const [viewMode, setViewMode] = useState<'BUILDER' | 'PROJECTION'>('BUILDER');
   const [isOptimizerActive, setIsOptimizerActive] = useState(true);
+
+  const { mutate: batchUpdate } = useBatchUpdatePortfolio();
 
   // Calculate aggregate metrics using Decimal for precision (Layer 1)
   const { totalWeight, totalValue } = useMemo(() => {
@@ -260,16 +263,30 @@ export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, 
               <OptimizationPanel
                 portfolio={portfolio}
                 onApply={(newShares, newWeights) => {
-                  // 1. Update Shares
-                  Object.entries(newShares).forEach(([ticker, additionalShares]) => {
-                     const currentShares = portfolio.find(p => p.ticker === ticker)?.shares || 0;
-                     handleUpdateShares(ticker, currentShares + additionalShares);
+                  // Consolidate updates into a single batch operation to avoid race conditions
+                  handleInteraction();
+
+                  const updates: { ticker: string; weight?: number; shares?: number }[] = [];
+
+                  // Process shares and weights
+                  // We iterate over the portfolio to ensure we capture all updates needed
+                  portfolio.forEach(item => {
+                      const additionalShares = newShares[item.ticker] || 0;
+                      const weight = newWeights[item.ticker];
+
+                      // Only add update if there is a change
+                      if (additionalShares > 0 || weight !== undefined) {
+                          updates.push({
+                              ticker: item.ticker,
+                              shares: (item.shares || 0) + additionalShares,
+                              weight: weight // will be undefined if not in newWeights, handled by hook
+                          });
+                      }
                   });
 
-                  // 2. Update Weights
-                  Object.entries(newWeights).forEach(([ticker, weight]) => {
-                    handleUpdateWeight(ticker, weight);
-                  });
+                  if (updates.length > 0) {
+                      batchUpdate(updates);
+                  }
 
                   setIsOptimizerActive(false);
                 }}
@@ -279,7 +296,7 @@ export default function PortfolioBuilder({ portfolio, onRemove, onUpdateWeight, 
                 <h3 className="text-lg font-medium text-white mb-6 flex-shrink-0">Sector X-Ray</h3>
                 <div className="w-full h-[300px] flex-shrink-0">
                   {pieData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <PieChart>
                         <Pie
                           data={pieData}

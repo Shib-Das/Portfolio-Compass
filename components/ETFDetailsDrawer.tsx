@@ -442,7 +442,7 @@ export default function ETFDetailsDrawer({ etf, onClose, onTickerSelect }: ETFDe
                     </div>
                   </div>
                   <div className="flex-1 w-full h-full min-h-0">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={historyData}>
                         <defs>
                           <linearGradient id="colorPriceUp" x1="0" y1="0" x2="0" y2="1">

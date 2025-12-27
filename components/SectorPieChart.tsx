@@ -87,7 +87,7 @@ export default function SectorPieChart({ sectors, data, isLoading = false, onSec
       transition={{ duration: 0.5 }}
       className="w-full h-full min-h-[250px]"
     >
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
         <PieChart>
           <Pie
             data={processedData}
