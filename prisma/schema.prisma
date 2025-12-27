@@ -99,3 +99,13 @@ model PortfolioItem {
   shares    Decimal  @default(0)
   etf       Etf    @relation(fields: [etfId], references: [ticker])
 }
+
+model MarketSentiment {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  score     Float
+  rating    String?
+  source    String   @default("CNN")
+
+  @@index([date])
+}
