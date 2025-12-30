@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowRight, Leaf, Zap, Cpu, Activity, Sprout } from 'lucide-react';
+import { Leaf, Cpu, ShieldCheck } from 'lucide-react';
 import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import BiopunkSlider from './BiopunkSlider';
+import NumberTicker from './ui/NumberTicker';
 
 const textVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -19,9 +20,9 @@ const textVariants = {
 };
 
 const titleWords = [
-  { text: "fun", font: "font-cursive", color: "text-emerald-400" },
-  { text: "stable", font: "font-sans", color: "text-blue-400" },
-  { text: "aggressive", font: "font-serif", color: "text-red-400" }
+  { text: "protected", font: "font-display italic", color: "text-bio-cyan" },
+  { text: "optimized", font: "font-display italic", color: "text-bio-green" },
+  { text: "adaptive", font: "font-display italic", color: "text-bio-red" }
 ];
 
 export default function Hero({ onStart }: { onStart?: () => void }) {
@@ -37,8 +38,8 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
   const mouseX = useSpring(x, { stiffness: 50, damping: 20 });
   const mouseY = useSpring(y, { stiffness: 50, damping: 20 });
 
-  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["7deg", "-7deg"]);
-  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-7deg", "7deg"]);
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["3deg", "-3deg"]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-3deg", "3deg"]);
 
   const y1 = useTransform(mouseY, [-0.5, 0.5], [-20, 20]);
   const y2 = useTransform(mouseY, [-0.5, 0.5], [20, -20]);
@@ -63,40 +64,45 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
 
   return (
     <div
-      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-stone-950 text-stone-100 font-sans selection:bg-emerald-500/30"
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-void-950 text-text-body font-sans selection:bg-bio-cyan/30 bg-noise"
       onMouseMove={handleMouseMove}
     >
 
-      {/* 1. Organic Background Layer - "The Overgrowth" */}
+      {/* 1. Organic Background Layer - "The Cellular Grid" */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-stone-950 to-stone-950" />
-        <div className="absolute inset-0 bg-grid-pattern opacity-20 mask-image-gradient" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-structure-900/30 via-void-950 to-void-950" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-10" />
 
-        {/* Floating Spores/Particles */}
-        {mounted && [...Array(15)].map((_, i) => (
+        {/* Floating Cells */}
+        {mounted && [...Array(8)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute bg-emerald-500/10 rounded-full blur-sm"
+            className="absolute border border-structure-500/20 rounded-full blur-[1px]"
             initial={{
               x: Math.random() * window.innerWidth,
               y: Math.random() * window.innerHeight,
-              scale: Math.random() * 0.5 + 0.2,
+              scale: Math.random() * 0.5 + 0.5,
+              opacity: 0.1,
             }}
             animate={{
-              y: [null, Math.random() * -50],
-              x: [null, Math.random() * 50 - 25],
-              opacity: [0.2, 0.5, 0.2],
+              y: [null, Math.random() * -100],
+              x: [null, Math.random() * 40 - 20],
+              opacity: [0.1, 0.3, 0.1],
+              scale: [null, Math.random() * 0.2 + 0.5],
             }}
             transition={{
-              duration: Math.random() * 10 + 10,
+              duration: Math.random() * 20 + 20,
               repeat: Infinity,
               ease: "linear",
             }}
             style={{
-              width: Math.random() * 20 + 5,
-              height: Math.random() * 20 + 5,
+              width: Math.random() * 100 + 50,
+              height: Math.random() * 100 + 50,
             }}
-          />
+          >
+             {/* Inner Nucleus */}
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-structure-500/30 rounded-full" />
+          </motion.div>
         ))}
       </div>
 
@@ -111,48 +117,36 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
               animate="visible"
               custom={0}
               variants={textVariants}
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono tracking-widest backdrop-blur-md ${marketStatus === 'OPEN'
-                ? 'bg-emerald-900/20 border-emerald-500/20 text-emerald-400'
-                : 'bg-red-900/20 border-red-500/20 text-red-400'
-                }`}
+              className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full border border-bio-green/20 bg-bio-green/5 backdrop-blur-md"
             >
               <span className="relative flex h-2 w-2">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${marketStatus === 'OPEN' ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${marketStatus === 'OPEN' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-bio-green opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-bio-green"></span>
               </span>
-              MARKET: {marketStatus}
+              <span className="text-xs font-mono font-bold tracking-widest text-bio-green uppercase">
+                System Nominal • Protected
+              </span>
             </motion.div>
 
             <motion.h1
               custom={1}
               variants={textVariants}
-              className="text-4xl sm:text-5xl md:text-7xl font-display font-bold leading-tight mt-6"
+              className="text-5xl sm:text-6xl md:text-8xl font-display font-medium leading-[0.9] mt-6 tracking-tight text-white"
             >
-              Make your <span className="text-stone-600">portfolio</span> <br />
-              <div className="h-[1.2em] relative overflow-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={titleIndex}
-                    initial={{ y: 40, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -40, opacity: 0 }}
-                    transition={{ duration: 0.5, ease: "backOut" }}
-                    className={`block ${titleWords[titleIndex].font} ${titleWords[titleIndex].color}`}
-                  >
-                    {titleWords[titleIndex].text}
-                  </motion.span>
-                </AnimatePresence>
+              The Immune <br /> System For <br />
+              <div className="relative inline-block">
+                Your Capital
+                <div className="absolute -bottom-2 left-0 right-0 h-[2px] bg-gradient-to-r from-bio-cyan via-bio-green to-transparent opacity-50" />
               </div>
             </motion.h1>
 
             <motion.p
               custom={2}
               variants={textVariants}
-              className="text-base sm:text-lg text-stone-400 max-w-xl leading-relaxed mt-6"
+              className="text-lg sm:text-xl text-text-muted max-w-xl leading-relaxed mt-6 font-light"
             >
-              Experience institutional-grade portfolio management.
-              PortfolioCompass merges algorithmic precision with sustainable growth strategies.
-              Watch your wealth evolve with data-driven clarity.
+              <span className="text-white font-medium">PortfolioCompass</span> acts as a biological shield for your wealth.
+              Deploying algorithmic antibodies to neutralize volatility and cultivate compounded growth.
             </motion.p>
 
             <motion.div
@@ -162,23 +156,23 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
             >
               <motion.button
                 onClick={onStart}
-                whileHover={{ scale: 1.05, backgroundColor: '#059669' }} // emerald-600
-                whileTap={{ scale: 0.95 }}
-                className="group px-8 py-4 rounded-lg bg-emerald-600 text-white font-medium shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 cursor-pointer relative overflow-hidden w-full sm:w-auto"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="group px-8 py-4 rounded-full bg-white text-void-950 font-display font-bold text-lg shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] flex items-center justify-center gap-2 cursor-pointer relative overflow-hidden w-full sm:w-auto"
               >
-                <span className="relative z-10">Start Analysis</span>
-                <Leaf className="w-4 h-4 relative z-10 group-hover:rotate-45 transition-transform" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                <span className="relative z-10">Initialize Sequence</span>
+                <Leaf className="w-5 h-5 relative z-10 group-hover:rotate-45 transition-transform text-bio-green" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-stone-200/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </motion.button>
 
               <motion.button
                 onClick={onStart}
-                whileHover={{ scale: 1.05, borderColor: 'rgba(255,255,255,0.2)' }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 rounded-lg bg-stone-900/50 border border-stone-700 text-stone-300 hover:text-white font-medium transition-colors backdrop-blur-md cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto"
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                whileTap={{ scale: 0.98 }}
+                className="px-8 py-4 rounded-full border border-white/10 text-white font-medium transition-colors backdrop-blur-md cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto hover:border-white/30"
               >
-                <Cpu className="w-4 h-4" />
-                View Documentation
+                <Cpu className="w-4 h-4 text-bio-cyan" />
+                <span className="font-mono text-sm tracking-wide">READ_PROTOCOL_V1</span>
               </motion.button>
             </motion.div>
 
@@ -186,17 +180,21 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
             <motion.div
               custom={4}
               variants={textVariants}
-              className="grid grid-cols-3 gap-4 sm:gap-6 pt-8 border-t border-stone-800/50 mt-12"
+              className="grid grid-cols-3 gap-8 pt-8 border-t border-white/10 mt-12"
             >
               {[
-                { label: 'Live Data', val: '24ms', icon: Zap },
-                { label: 'Asset Types', val: 'Hybrid', icon: Sprout },
-                { label: 'Security', val: 'Bank-Grade', icon: Activity },
+                { label: 'Latency', val: '24ms', icon: ShieldCheck, color: 'text-bio-green' },
+                { label: 'Architecture', val: 'Hybrid', icon: Cpu, color: 'text-bio-cyan' },
+                { label: 'Status', val: 'Secure', icon: Leaf, color: 'text-white' },
               ].map((item, i) => (
-                <div key={i} className="space-y-1">
-                  <item.icon className="w-5 h-5 text-emerald-500 mb-2" />
-                  <div className="text-xl sm:text-2xl font-display font-bold text-white">{item.val}</div>
-                  <div className="text-[10px] sm:text-xs text-stone-500 uppercase tracking-wider">{item.label}</div>
+                <div key={i} className="space-y-1 group cursor-default">
+                  <div className="flex items-center gap-2 mb-2">
+                     <item.icon className={`w-4 h-4 ${item.color} opacity-70 group-hover:opacity-100 transition-opacity`} />
+                     <div className="text-[10px] sm:text-xs text-text-muted uppercase tracking-wider font-mono">{item.label}</div>
+                  </div>
+                  <div className={`text-2xl sm:text-3xl font-display font-light text-white group-hover:tracking-wider transition-all duration-300`}>
+                    {item.val}
+                  </div>
                 </div>
               ))}
             </motion.div>
@@ -209,10 +207,10 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
           {/* Background Glow */}
           <motion.div
             style={{ y: y2 }}
-            className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-transparent rounded-full blur-3xl"
+            className="absolute inset-0 bg-gradient-to-tr from-structure-500/10 to-transparent rounded-full blur-[100px]"
           />
 
-          {/* The "Artifact" - Glassmorphism Card + Interactive Slider */}
+          {/* The "Artifact" - Lab Card + Interactive Slider */}
           <motion.div
             style={{
               y: y1,
@@ -223,93 +221,89 @@ export default function Hero({ onStart }: { onStart?: () => void }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="relative w-full max-w-md bg-stone-900/80 border border-stone-700/50 backdrop-blur-xl rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/50 overflow-hidden mx-auto pointer-events-auto"
+            className="lab-card w-full max-w-md rounded-xl p-8 pointer-events-auto"
           >
 
+            {/* Scanlines Overlay */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-20 bg-[length:100%_4px,3px_100%] pointer-events-none opacity-20" />
 
-            <div className="space-y-6 relative z-10" style={{ transform: "translateZ(30px)" }}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg sm:text-xl font-display font-bold text-emerald-100">Growth Simulation</h3>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+
+            <div className="space-y-8 relative z-30" style={{ transform: "translateZ(30px)" }}>
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <h3 className="text-sm font-mono tracking-widest text-bio-cyan uppercase">Sim__Sequence.01</h3>
+                <div className="flex gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-bio-cyan animate-pulse" />
+                   <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                </div>
               </div>
 
               <div
-                className="h-32 sm:h-40 bg-stone-950/50 rounded-lg border border-stone-800/50 p-4 relative overflow-hidden group"
+                className="h-32 sm:h-40 relative group"
                 style={{ transform: "translateZ(20px)" }}
               >
                 {/* Simulated Chart */}
-                <div className="flex items-end justify-between h-full gap-2 px-2">
-                  {[...Array(12)].map((_, i) => {
+                <div className="flex items-end justify-between h-full gap-1 px-1">
+                  {[...Array(16)].map((_, i) => {
                     // Logic:
                     // Risk (0-100) -> Annual Return Rate (2% to 15%)
                     // Years (1-50) -> Duration
 
                     const rate = 0.02 + (riskValue / 100) * 0.13; // 2% to 15%
                     const maxYears = yearsValue;
-                    const yearForBar = (i / 11) * maxYears;
+                    const yearForBar = (i / 15) * maxYears;
 
                     // Compound Interest: (1 + r)^t
                     const growth = Math.pow(1 + rate, yearForBar);
-
-                    // Use Logarithmic scale to handle the wide range of growth (1.02x to 1000x+)
-                    // Log10(1) = 0
-                    // Log10(1000) = 3
                     const logGrowth = Math.log10(growth);
-
-                    // Normalize against a "Reasonable Max" (e.g., ~316x growth = 2.5 log)
-                    // to ensure typical values (2x-20x) are visible.
-                    // Using 2.5 allows 100x return to be at 80% height, while 1000x clips at 100%.
                     const maxLogScale = 2.5;
 
                     const barHeight = 10 + (logGrowth / maxLogScale) * 90;
-                    const finalHeight = Math.min(100, barHeight + Math.random() * 2); // Add subtle jitter
+                    const finalHeight = Math.min(100, barHeight + Math.random() * 2);
 
                     return (
                       <motion.div
                         key={i}
-                        className="w-full bg-emerald-500/80 rounded-t-sm"
+                        className="w-full bg-bio-cyan/40 hover:bg-bio-cyan/80 transition-colors rounded-sm"
                         animate={{ height: `${finalHeight}%` }}
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                        style={{ opacity: 0.3 + (i / 12) }}
                       />
                     );
                   })}
                 </div>
                 {/* Overlay Text */}
-                <div className="absolute top-2 left-4 text-xs text-stone-500 font-mono">
-                  PROJECTION: +{((Math.pow(1 + (0.02 + (riskValue / 100) * 0.13), yearsValue) - 1) * 100).toFixed(0)}%
+                <div className="absolute top-0 right-0 text-right">
+                    <div className="text-[10px] text-text-muted font-mono uppercase mb-1">Proj. Yield</div>
+                    <div className="text-2xl font-display font-light text-white tracking-tighter">
+                        +<NumberTicker value={((Math.pow(1 + (0.02 + (riskValue / 100) * 0.13), yearsValue) - 1) * 100)} />%
+                    </div>
                 </div>
               </div>
 
-              <div className="space-y-4" style={{ transform: "translateZ(40px)" }}>
+              <div className="space-y-6" style={{ transform: "translateZ(40px)" }}>
                 <BiopunkSlider
-                  label="Time Horizon"
+                  label="Time_Horizon"
                   min={1}
                   max={50}
                   defaultValue={10}
-                  unit=" Years"
+                  unit="Y"
                   onChange={(v) => setYearsValue(v)}
                 />
 
                 <BiopunkSlider
-                  label="Risk Tolerance ( volatility )"
+                  label="Risk_Tolerance"
                   min={1}
                   max={100}
                   defaultValue={65}
-                  className="pt-2"
+                  unit="%"
                   onChange={(v) => setRiskValue(v)}
                 />
               </div>
 
-              <div className="pt-4 flex gap-3 text-xs text-stone-500 border-t border-stone-800 flex-wrap" style={{ transform: "translateZ(10px)" }}>
-                <span>• Institutional</span>
-                <span>• Algorithmic</span>
-                <span>• Sustainable</span>
+              <div className="pt-4 flex justify-between text-[10px] font-mono text-text-muted/50 border-t border-white/5 mt-4" style={{ transform: "translateZ(10px)" }}>
+                <span>ID: 884-29-X</span>
+                <span>SEC: A-1</span>
               </div>
             </div>
-
-            {/* Glass Shine Effect */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" style={{ transform: "translateZ(50px)" }} />
           </motion.div>
         </div>
 

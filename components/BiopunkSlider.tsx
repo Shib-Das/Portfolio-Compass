@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 
 interface BiopunkSliderProps {
   label: string;
@@ -26,16 +26,15 @@ export default function BiopunkSlider({
   const constraintsRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(0);
   const x = useMotionValue(0);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Calculate percentage for visuals
-  const percentage = useTransform(x, [0, trackWidth || 1], ["0%", "100%"]);
+  // Swiss Design Dial aesthetics
+  // Track: precise line
   const color = useTransform(
     x,
-    [0, (trackWidth || 1) / 2, trackWidth || 1],
-    ['#059669', '#10b981', '#34d399'] // Emerald gradient
+    [0, trackWidth || 1],
+    ['#00f0ff', '#39ff14'] // Bio-cyan to Bio-green
   );
-
-  const glowOpacity = useTransform(x, [0, trackWidth || 1], [0.2, 0.8]);
 
   useEffect(() => {
     if (constraintsRef.current) {
@@ -74,59 +73,62 @@ export default function BiopunkSlider({
   };
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex justify-between items-end mb-1">
-        <span className="text-stone-400 text-xs font-mono uppercase tracking-wider">{label}</span>
-        <motion.span
-          className="text-emerald-400 text-sm font-display font-bold"
-          style={{ opacity: glowOpacity }}
-        >
+    <div className={`flex flex-col gap-3 ${className}`}>
+      <div className="flex justify-between items-end">
+        <span className="text-text-muted text-[10px] font-mono uppercase tracking-widest">{label}</span>
+        <span className="text-white font-mono text-xs tabular-nums tracking-wide">
           {value}{unit}
-        </motion.span>
+        </span>
       </div>
 
-      <div className="relative h-12 flex items-center w-full" ref={constraintsRef}>
-        {/* Track Background - Organic Vine Look */}
-        <div className="absolute top-1/2 left-0 w-full h-1 bg-stone-800/50 rounded-full overflow-hidden -translate-y-1/2 backdrop-blur-sm border border-stone-700/30">
+      <div className="relative h-6 flex items-center w-full" ref={constraintsRef}>
+        {/* Track Background - Thin Precise Line */}
+        <div className="absolute top-1/2 left-0 w-full h-[2px] bg-white/10 -translate-y-1/2 rounded-full overflow-hidden">
+             {/* Tick marks */}
+            {[0, 25, 50, 75, 100].map(p => (
+                <div key={p} className="absolute top-0 w-[1px] h-full bg-white/20" style={{ left: `${p}%` }} />
+            ))}
+        </div>
+
+        {/* Active Fill Track (optional, minimal) */}
+        <div className="absolute top-1/2 left-0 h-[2px] -translate-y-1/2 pointer-events-none">
           <motion.div
-            className="h-full bg-emerald-900/40"
-            style={{ width: percentage }}
+            className="h-full bg-white/40"
+            style={{ width: x }}
           />
         </div>
 
-        {/* Active Fill Track */}
-        <div className="absolute top-1/2 left-0 h-1 -translate-y-1/2 pointer-events-none">
-          <motion.div
-            className="h-full rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-            style={{ width: x, backgroundColor: color }}
-          />
-        </div>
-
-        {/* Thumb - "Seed" */}
+        {/* Thumb - "Swiss Dial" */}
         <motion.div
           drag="x"
           dragConstraints={{ left: 0, right: trackWidth }}
           dragElastic={0}
           dragMomentum={false}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={() => setIsDragging(false)}
           onDrag={handleDrag}
           style={{ x }}
-          whileHover={{ scale: 1.2 }}
-          whileTap={{ scale: 0.9 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           className="absolute top-1/2 left-0 -translate-y-1/2 -ml-3 cursor-grab active:cursor-grabbing z-10"
         >
-          {/* Outer Glow */}
-          <motion.div
-            className="absolute inset-0 bg-emerald-500 rounded-full blur-md"
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.6, 0.3]
-            }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+          {/* Tooltip on Drag */}
+          {isDragging && (
+             <motion.div
+               initial={{ opacity: 0, y: -10 }}
+               animate={{ opacity: 1, y: -20 }}
+               className="absolute left-1/2 -translate-x-1/2 -top-4 bg-void-900 border border-white/20 px-2 py-1 rounded text-[10px] text-white font-mono whitespace-nowrap z-20 pointer-events-none"
+             >
+                {value}{unit}
+             </motion.div>
+          )}
 
-          {/* Core */}
-          <div className="relative w-6 h-6 bg-stone-900 rounded-full border-2 border-emerald-400 flex items-center justify-center shadow-lg">
-            <div className="w-2 h-2 bg-emerald-200 rounded-full" />
+          {/* The Dial */}
+          <div className="relative w-6 h-6 bg-void-900 rounded-full border border-white/30 flex items-center justify-center shadow-lg hover:border-bio-cyan/50 transition-colors">
+            <div className="w-1.5 h-1.5 bg-white rounded-full" />
+
+            {/* Indicator Dot (Optional spin or alignment) */}
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 w-[1px] h-1 bg-white/50" />
           </div>
         </motion.div>
       </div>

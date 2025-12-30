@@ -1,7 +1,7 @@
 import "./globals.css";
 import React from "react";
 import Providers from "@/components/Providers";
-import { Inter, Space_Grotesk } from 'next/font/google';
+import { Inter, Fraunces } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 
@@ -11,10 +11,11 @@ const inter = Inter({
   display: 'swap',
 });
 
-const spaceGrotesk = Space_Grotesk({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-space',
+  variable: '--font-fraunces',
   display: 'swap',
+  axes: ['SOFT', 'WONK', 'opsz'],
 });
 
 export const metadata = {
@@ -24,8 +25,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
-      <body className="font-sans antialiased bg-stone-950 text-stone-100" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable}`} suppressHydrationWarning>
+      <body className="font-sans antialiased bg-void-950 text-text-body" suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

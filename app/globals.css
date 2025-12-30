@@ -1,17 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-emerald-400: #34d399;
-  --color-emerald-500: #10b981;
-  --color-emerald-600: #059669;
-  --color-emerald-900: #064e3b;
+  /* The "Abyssal Void" Backgrounds */
+  --color-void-950: #020408;
+  --color-void-900: #050a14;
+  --color-void-800: #0b1221;
 
-  --color-stone-800: #292524;
-  --color-stone-900: #1c1917;
-  --color-stone-950: #0c0a09;
+  /* Structural Anchors (Deep Teal) */
+  --color-structure-500: #004e64;
+  --color-structure-900: #002a3a;
+
+  /* Bioluminescent Accents */
+  --color-bio-cyan: #00f0ff;
+  --color-bio-green: #39ff14;
+  --color-bio-red: #ff2a6d;
+  --color-text-body: #e2e8f0;
+  --color-text-muted: #94a3b8;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui;
-  --font-display: var(--font-space), ui-sans-serif, system-ui;
+  --font-display: var(--font-fraunces), ui-serif, system-ui;
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-breathe: breathe 4s ease-in-out infinite;
@@ -28,39 +35,54 @@
   }
 }
 
-:root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 12, 10, 9; /* Stone 950 */
-  --background-end-rgb: 0, 0, 0;
-}
-
 body {
-  color: rgb(var(--foreground-rgb));
-  background: var(--color-stone-950);
+  color: var(--color-text-body);
+  background: radial-gradient(circle at 50% 0%, #0b1221 0%, #020408 100%);
 }
 
 @layer utilities {
+  .bg-noise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .font-numeric {
+    font-feature-settings: "tnum" on, "lnum" on;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .lab-card {
+    @apply bg-void-800/80 border border-structure-500/30 backdrop-blur-xl relative overflow-hidden;
+    box-shadow: 0 0 0 1px rgba(0, 78, 100, 0.1), 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Retaining some existing utility classes for compatibility, adjusted for new theme */
   .glass-panel {
-    @apply bg-stone-900/40 border border-emerald-500/10 backdrop-blur-md shadow-lg shadow-black/20;
+    @apply bg-void-900/40 border border-structure-500/10 backdrop-blur-md shadow-lg shadow-black/20;
   }
 
   .glass-card {
-    @apply bg-stone-900/60 border border-white/5 backdrop-blur-md;
+    @apply bg-void-900/60 border border-white/5 backdrop-blur-md;
   }
 
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Biopunk Textures */
+  /* Updated to use structure colors */
   .bg-grid-pattern {
-    background-image: linear-gradient(to right, rgba(16, 185, 129, 0.05) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(16, 185, 129, 0.05) 1px, transparent 1px);
+    background-image: linear-gradient(to right, rgba(0, 78, 100, 0.05) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(0, 78, 100, 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
   .organic-glow {
-    box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 20px -5px rgba(0, 240, 255, 0.2); /* Bio-cyan glow */
   }
 }
 
@@ -71,14 +93,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0c0a09;
+  background: #020408;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #292524;
+  background: #0b1221;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
+  background: #004e64;
 }
