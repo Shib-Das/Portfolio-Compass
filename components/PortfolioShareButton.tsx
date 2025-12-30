@@ -130,7 +130,7 @@ export function PortfolioShareButton({ portfolio, metrics, chartData, spyData, d
                             </div>
                          </div>
                          <div className="absolute bottom-6 left-0 w-full text-center text-xs text-neutral-600 font-mono pointer-events-none uppercase tracking-wider z-20">
-                            Dimensions: 1080 x 1350px (Social Portrait)
+                            Width: 1080px (Social Portrait)
                          </div>
                     </div>
 

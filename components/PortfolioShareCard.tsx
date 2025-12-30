@@ -164,7 +164,7 @@ export const PortfolioShareCard = React.forwardRef<HTMLDivElement, ShareCardProp
     return (
       <div
         ref={ref}
-        className="w-[1080px] h-[1350px] bg-[#0a0a0a] text-white p-12 flex flex-col relative overflow-hidden font-sans"
+        className="w-[1080px] min-h-[1350px] bg-[#0a0a0a] text-white p-10 flex flex-col relative font-sans"
         style={{ fontFamily: 'var(--font-inter), sans-serif' }}
       >
         {/* Background Effects */}
