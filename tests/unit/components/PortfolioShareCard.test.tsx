@@ -81,7 +81,6 @@ describe('PortfolioShareCard', () => {
         );
 
         // Updated text matching based on new design
-        expect(getByText("Possible Outcomes (90% CI)")).toBeInTheDocument();
-        expect(getByText("Median Projection")).toBeInTheDocument();
+        expect(getByText("90% Confidence Interval")).toBeInTheDocument();
     });
 });
