@@ -3,7 +3,7 @@ import { ETF } from '@/types'
 import prisma from '@/lib/db'
 import { fetchMarketSnapshot } from '@/lib/market-service'
 import { syncEtfDetails } from '@/lib/etf-sync'
-import { Decimal } from 'decimal.js'
+import { Decimal } from '@/lib/decimal'
 import pLimit from 'p-limit'
 import { toPrismaDecimalRequired, toPrismaDecimal } from '@/lib/prisma-utils'
 

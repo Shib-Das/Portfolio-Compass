@@ -1,167 +1,102 @@
 import * as cheerio from 'cheerio';
 
-export interface StockProfile {
-  sector: string;
-  industry: string;
-  description: string;
-  analyst?: {
-    summary: string;
-    consensus: string;
-    targetPrice: number | null;
-    targetUpside: number | null; // as percentage
-  };
-  marketCap?: number;
-  revenue?: number;
-  netIncome?: number;
-  sharesOutstanding?: number;
-  eps?: number;
-  peRatio?: number;
-  forwardPe?: number;
-  dividend?: number;
-  dividendYield?: number;
-  dividendGrowth5Y?: number;
-  exDividendDate?: string;
+// -----------------------------------------------------------------------------
+// Caching & Resilience
+// -----------------------------------------------------------------------------
 
-  volume?: number;
-  open?: number;
-  previousClose?: number;
-  daysRange?: string; // "0.1733 - 0.4700"
-  fiftyTwoWeekRange?: string; // "0.1153 - 9.8000"
-  beta?: number;
-  earningsDate?: string;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+const CACHE_SIZE = 500;
 
-  fiftyTwoWeekLow?: number;
-  fiftyTwoWeekHigh?: number;
-  expenseRatio?: number;
-
-  // New ETF Metrics
-  inceptionDate?: string;
-  payoutFrequency?: string;
-  payoutRatio?: number;
-  holdingsCount?: number;
-  bondMaturity?: number;
-  bondDuration?: number;
+interface CacheEntry {
+    data: any;
+    timestamp: number;
 }
 
-export interface ScrapedHolding {
-    symbol: string;
-    name: string;
-    weight: number;
-    shares: number | null;
-}
+const memoryCache = new Map<string, CacheEntry>();
 
-export async function getMarketMovers(type: 'gainers' | 'losers'): Promise<string[]> {
-    const url = `https://stockanalysis.com/markets/${type}/`;
-    const response = await fetch(url, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        }
-    });
-    if (!response.ok) {
-        console.error(`Failed to fetch ${type}: ${response.status}`);
-        return [];
+function getFromCache<T>(key: string): T | null {
+    const entry = memoryCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+        memoryCache.delete(key);
+        return null;
     }
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    return entry.data as T;
+}
 
-    const tickers: string[] = [];
+function setInCache(key: string, data: any) {
+    if (memoryCache.size >= CACHE_SIZE) {
+        // Simple eviction
+        const firstKey = memoryCache.keys().next().value;
+        if(firstKey) memoryCache.delete(firstKey);
+    }
+    memoryCache.set(key, { data, timestamp: Date.now() });
+}
 
-    // Find the main table
-    $('table').each((_, table) => {
-        const headers = $(table).find('th').map((_, th) => $(th).text().trim()).get();
-        if (headers.includes('Symbol') && headers.includes('% Change')) {
-            const symbolIndex = headers.indexOf('Symbol');
-            if (symbolIndex > -1) {
-                 $(table).find('tbody tr').each((_, tr) => {
-                    const symbolCell = $(tr).find('td').eq(symbolIndex);
-                    const ticker = symbolCell.text().trim();
-                    if (ticker) tickers.push(ticker);
-                 });
+async function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function retryWithBackoff(fn: () => Promise<Response>, retries = 3, baseDelay = 1000): Promise<Response> {
+    let attempt = 0;
+    while (attempt < retries) {
+        try {
+            const res = await fn();
+            if (res.ok) return res;
+            if (res.status === 404) return res;
+            if (res.status === 429) {
+                const delay = baseDelay * Math.pow(2, attempt) + (Math.random() * 500);
+                console.warn(`[StockAnalysis] Rate limit 429. Retrying in ${Math.round(delay)}ms...`);
+                await sleep(delay);
+                attempt++;
+                continue;
             }
+            throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        } catch (e: any) {
+            attempt++;
+            if (attempt >= retries) throw e;
+            const delay = baseDelay * Math.pow(2, attempt);
+            await sleep(delay);
         }
-    });
-
-    return tickers;
+    }
+    throw new Error('Max retries exceeded');
 }
 
-export async function getEtfHoldings(ticker: string): Promise<ScrapedHolding[]> {
-    // StockAnalysis mostly supports US tickers.
-    // If it's a Canadian ticker (e.g. .TO), it likely won't have holdings data on this site.
-    // We skip explicitly to avoid 404 noise.
-    if (ticker.includes('.')) {
-        return [];
+const fetchWithUserAgent = async (u: string) => {
+    const cached = getFromCache<string>(u);
+    if (cached) {
+        return {
+            ok: true,
+            status: 200,
+            text: async () => cached,
+            json: async () => JSON.parse(cached)
+        } as unknown as Response;
     }
 
-    const url = `https://stockanalysis.com/etf/${ticker.toLowerCase()}/holdings/`;
-    const response = await fetch(url, {
+    const response = await retryWithBackoff(() => fetch(u, {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         }
-    });
+    }));
 
-    if (!response.ok) {
-        if (response.status === 404) {
-            // It's common for some ETFs not to be on StockAnalysis, warn instead of error
-            console.warn(`[StockAnalysis] Holdings not found for ${ticker} (404).`);
-        } else {
-            console.error(`Failed to fetch holdings for ${ticker}: ${response.status}`);
-        }
-        return [];
+    if (response.ok) {
+        const text = await response.text();
+        setInCache(u, text);
+        return {
+            ok: true,
+            status: 200,
+            text: async () => text,
+            json: async () => JSON.parse(text)
+        } as unknown as Response;
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const holdings: ScrapedHolding[] = [];
+    return response;
+};
 
-    $('table').each((_, table) => {
-        const headers = $(table).find('th').map((_, th) => $(th).text().trim()).get();
-
-        const symbolIndex = headers.indexOf('Symbol');
-        const nameIndex = headers.indexOf('Name');
-        const weightIndex = headers.indexOf('% Weight');
-        const sharesIndex = headers.indexOf('Shares');
-
-        if (symbolIndex > -1 && weightIndex > -1) {
-             $(table).find('tbody tr').each((_, tr) => {
-                const tds = $(tr).find('td');
-                const symbol = tds.eq(symbolIndex).text().trim();
-                const name = nameIndex > -1 ? tds.eq(nameIndex).text().trim() : '';
-                const weightText = tds.eq(weightIndex).text().trim();
-                const sharesText = sharesIndex > -1 ? tds.eq(sharesIndex).text().trim() : '';
-
-                let weight = 0;
-                if (weightText.endsWith('%')) {
-                    weight = parseFloat(weightText.replace('%', '')) / 100;
-                }
-
-                let shares: number | null = null;
-                if (sharesText) {
-                    const cleanShares = sharesText.replace(/,/g, '');
-                    if (!isNaN(parseFloat(cleanShares))) {
-                        shares = parseFloat(cleanShares);
-                    }
-                }
-
-                if (symbol && symbol.toLowerCase() !== 'n/a') {
-                    holdings.push({
-                        symbol,
-                        name,
-                        weight,
-                        shares
-                    });
-                } else if (name && weight > 0) {
-                     holdings.push({
-                         symbol: name,
-                         name: name,
-                         weight,
-                         shares
-                     });
-                }
-             });
-        }
-    });
-
-    return holdings;
+function parseNumber(val: string): number {
+    if (!val) return 0;
+    const clean = val.replace(/,/g, '');
+    return parseFloat(clean);
 }
 
 function parseMarketNumber(val: string): number | undefined {
@@ -186,138 +121,257 @@ function parseMarketNumber(val: string): number | undefined {
     return num * multiplier;
 }
 
-const fetchWithUserAgent = async (u: string) => fetch(u, {
-  headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-  }
-});
+function parseDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toISOString().split('T')[0];
+}
+
+// -----------------------------------------------------------------------------
+// Type Definitions
+// -----------------------------------------------------------------------------
+
+export interface StockProfile {
+  sector: string;
+  industry: string;
+  description: string;
+  assetType?: 'STOCK' | 'ETF';
+  analyst?: {
+    summary: string;
+    consensus: string;
+    targetPrice: number | null;
+    targetUpside: number | null;
+  };
+  marketCap?: number;
+  revenue?: number;
+  netIncome?: number;
+  sharesOutstanding?: number;
+  eps?: number;
+  peRatio?: number;
+  forwardPe?: number;
+  dividend?: number;
+  dividendYield?: number;
+  dividendGrowth5Y?: number;
+  exDividendDate?: string;
+  volume?: number;
+  open?: number;
+  previousClose?: number;
+  daysRange?: string;
+  fiftyTwoWeekRange?: string;
+  beta?: number;
+  earningsDate?: string;
+  fiftyTwoWeekLow?: number;
+  fiftyTwoWeekHigh?: number;
+  expenseRatio?: number;
+  inceptionDate?: string;
+  payoutFrequency?: string;
+  payoutRatio?: number;
+  holdingsCount?: number;
+  bondMaturity?: number;
+  bondDuration?: number;
+  price?: number;
+  change?: number;
+  changePercent?: number;
+}
+
+export interface ScrapedHolding {
+    symbol: string;
+    name: string;
+    weight: number;
+    shares: number | null;
+}
+
+export interface HistoricalQuote {
+    date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    adjClose?: number;
+}
+
+export interface EtfBreakdown {
+    sectors: Record<string, number>;
+    holdings: ScrapedHolding[];
+    assetAllocation: Record<string, number>;
+}
+
+// -----------------------------------------------------------------------------
+// Core Scraping Functions
+// -----------------------------------------------------------------------------
+
+export async function getMarketMovers(type: 'gainers' | 'losers'): Promise<string[]> {
+    const url = `https://stockanalysis.com/markets/${type}/`;
+    const response = await fetchWithUserAgent(url);
+    if (!response.ok) return [];
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const tickers: string[] = [];
+    $('table').each((_, table) => {
+        const headers = $(table).find('th').map((_, th) => $(th).text().trim()).get();
+        if (headers.includes('Symbol') && headers.includes('% Change')) {
+            const symbolIndex = headers.indexOf('Symbol');
+            if (symbolIndex > -1) {
+                 $(table).find('tbody tr').each((_, tr) => {
+                    const symbolCell = $(tr).find('td').eq(symbolIndex);
+                    const ticker = symbolCell.text().trim();
+                    if (ticker) tickers.push(ticker);
+                 });
+            }
+        }
+    });
+    return tickers;
+}
+
+/**
+ * Helper to safely extract SvelteKit data using Regex instead of new Function.
+ */
+function extractSvelteDataSafe(html: string): any[] | null {
+    // Deprecated for security, keeping signature
+    return null;
+}
+
+export async function getEtfBreakdown(ticker: string): Promise<EtfBreakdown> {
+    const url = `https://stockanalysis.com/etf/${ticker.toLowerCase()}/holdings/`;
+    const response = await fetchWithUserAgent(url);
+
+    const breakdown: EtfBreakdown = {
+        sectors: {},
+        holdings: [],
+        assetAllocation: {}
+    };
+
+    if (!response.ok) return breakdown;
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Parse Holdings Table
+    const holdingsTable = $('table').filter((_, t) => {
+        const h = $(t).find('th').text();
+        return h.includes('Symbol') && h.includes('Weight');
+    }).first();
+
+    if (holdingsTable.length) {
+        const headers = holdingsTable.find('th').map((_, th) => $(th).text().trim()).get();
+        const symbolIdx = headers.indexOf('Symbol');
+        const nameIdx = headers.indexOf('Name');
+        const weightIdx = headers.indexOf('% Weight');
+        const sharesIdx = headers.indexOf('Shares');
+
+        holdingsTable.find('tbody tr').each((_, tr) => {
+            const tds = $(tr).find('td');
+            const symbol = tds.eq(symbolIdx).text().trim();
+            const name = tds.eq(nameIdx).text().trim();
+            const weightStr = tds.eq(weightIdx).text().trim();
+            const sharesStr = tds.eq(sharesIdx).text().trim();
+
+            const weight = parseFloat(weightStr.replace('%', '')) / 100;
+            const shares = sharesStr ? parseInt(sharesStr.replace(/,/g, ''), 10) : null;
+
+            if (symbol) {
+                breakdown.holdings.push({ symbol, name, weight, shares });
+            }
+        });
+    }
+
+    // Parse Sector Table
+    $('h2, h3, h4').each((_, h) => {
+        if ($(h).text().trim().includes('Sector')) {
+            const table = $(h).nextAll('table').first();
+            if (table.length) {
+                table.find('tbody tr').each((_, tr) => {
+                    const name = $(tr).find('td').first().text().trim();
+                    const val = $(tr).find('td').last().text().trim();
+                    const weight = parseFloat(val.replace('%', '')) / 100;
+                    if (name && !isNaN(weight)) {
+                        breakdown.sectors[name] = weight;
+                    }
+                });
+            }
+        }
+    });
+
+    // Parse Asset Allocation
+    const scriptContent = $('script').text();
+    const allocMatch = scriptContent.match(/asset_allocation\s*:\s*\[(.*?)\]/);
+    if (allocMatch) {
+        const matches = allocMatch[1].matchAll(/key:"([^"]+)",value:([\d.]+)/g);
+        for (const m of matches) {
+            breakdown.assetAllocation[m[1]] = parseFloat(m[2]) / 100;
+        }
+    }
+
+    return breakdown;
+}
 
 export async function getStockProfile(ticker: string): Promise<StockProfile | null> {
   let upperTicker = ticker.toUpperCase();
-  // StockAnalysis.com typically uses US tickers (e.g., ASML instead of ASML.AS)
-  // We try the original ticker first, but if it fails, we might try stripping suffix
-  // However, we must be careful not to map unrelated stocks.
-  // For now, let's try the provided ticker.
-
   let url = `https://stockanalysis.com/stocks/${ticker.toLowerCase()}/`;
   let isEtf = false;
 
   let response = await fetchWithUserAgent(url);
-
   if (response.status === 404) {
-    // Try ETF URL
     url = `https://stockanalysis.com/etf/${ticker.toLowerCase()}/`;
     response = await fetchWithUserAgent(url);
     if (response.ok) isEtf = true;
   }
-
-  // Fallback: Check for specific international exchanges (TSX, NEO) before generic suffix stripping
+  // Handle TSX/NEO fallback logic...
   if (response.status === 404 && ticker.includes('.')) {
-      const parts = ticker.split('.');
-      const baseTicker = parts[0];
-      const suffix = parts[1]?.toUpperCase();
-
-      if (suffix === 'TO') {
-           // Try TSX
-           url = `https://stockanalysis.com/quote/tsx/${baseTicker.toLowerCase()}/`;
-           response = await fetchWithUserAgent(url);
-           if (response.ok) {
-               isEtf = true; // TSX pages share structure
-               upperTicker = baseTicker.toUpperCase();
-           }
-      } else if (suffix === 'NE') {
-           // Try NEO
-           url = `https://stockanalysis.com/quote/neo/${baseTicker.toLowerCase()}/`;
-           response = await fetchWithUserAgent(url);
-           if (response.ok) {
-               isEtf = true;
-               upperTicker = baseTicker.toUpperCase();
-           }
-      }
+      const [base, suffix] = ticker.split('.');
+      if (suffix?.toUpperCase() === 'TO') url = `https://stockanalysis.com/quote/tsx/${base.toLowerCase()}/`;
+      else if (suffix?.toUpperCase() === 'NE') url = `https://stockanalysis.com/quote/neo/${base.toLowerCase()}/`;
+      response = await fetchWithUserAgent(url);
+      if (response.ok) { isEtf = true; upperTicker = base.toUpperCase(); }
   }
 
-  // Fallback: If original ticker failed (404), and it has a suffix (e.g., ASML.AS), try stripping it.
-  // This is useful for dual-listed companies where StockAnalysis only tracks the US listing.
-  // We only do this if the base ticker is > 2 chars to avoid ambiguity with small tickers.
-  if (response.status === 404 && ticker.includes('.')) {
-      const baseTicker = ticker.split('.')[0];
-      if (baseTicker.length > 2) {
-          // Try base ticker as stock
-          url = `https://stockanalysis.com/stocks/${baseTicker.toLowerCase()}/`;
-          response = await fetchWithUserAgent(url);
-
-          if (response.ok) {
-               upperTicker = baseTicker.toUpperCase();
-          } else {
-               if (response.status === 404) {
-                   // Try base ticker as ETF
-                   url = `https://stockanalysis.com/etf/${baseTicker.toLowerCase()}/`;
-                   response = await fetchWithUserAgent(url);
-                   if (response.ok) {
-                       isEtf = true;
-                       upperTicker = baseTicker.toUpperCase();
-                   }
-               }
-          }
-      }
-  }
-
-  if (!response.ok) {
-    console.error(`Failed to fetch profile for ${ticker}: ${response.status}`);
-    return null;
-  }
+  if (!response.ok) return null;
 
   const html = await response.text();
   const $ = cheerio.load(html);
 
-  let sector = '';
-  let industry = '';
+  const metrics: Partial<StockProfile> = { assetType: isEtf ? 'ETF' : 'STOCK' };
 
+  // Regex extract price/change from script to be fast
+  const scriptContent = $('script').text();
+  const quoteMatch = scriptContent.match(/quote\s*:\s*\{([^}]+)\}/);
+  if (quoteMatch) {
+      const inner = quoteMatch[1];
+      const pMatch = inner.match(/p:([\d.-]+)/);
+      const cMatch = inner.match(/c:([\d.-]+)/);
+      const cpMatch = inner.match(/cp:([\d.-]+)/);
+
+      if (pMatch) metrics.price = parseFloat(pMatch[1]);
+      if (cMatch) metrics.change = parseFloat(cMatch[1]);
+      if (cpMatch) metrics.changePercent = parseFloat(cpMatch[1]);
+  }
+
+  // Fallback to DOM for price if regex failed
+  if (metrics.price === undefined) {
+      const priceText = $('div[class*="text-4xl"]').first().text().trim();
+      if (priceText) metrics.price = parseNumber(priceText);
+  }
+
+  // --- Cheerio Parsing for details ---
   const extractLabelValue = (labels: string[]): string | undefined => {
       let val: string | undefined;
       $('span, div, td, th').each((_, el) => {
         if (val) return;
         const text = $(el).text().trim();
-        // Exact match or starts with label:
         if (labels.includes(text) || labels.some(l => text.startsWith(l + ':'))) {
-            // Check next sibling
             let next = $(el).next();
-            if (next.length && next.text().trim()) {
-                 val = next.text().trim();
-                 return;
-            }
-            // Check if colon format
+            if (next.length && next.text().trim()) { val = next.text().trim(); return; }
             if (text.includes(':')) {
                  const parts = text.split(':');
-                 if (parts.length > 1 && parts[1].trim()) {
-                     val = parts[1].trim();
-                     return;
-                 }
+                 if (parts.length > 1 && parts[1].trim()) { val = parts[1].trim(); return; }
             }
         }
       });
       return val;
   };
 
-  sector = extractLabelValue(['Sector', 'Asset Class']) || '';
-  industry = extractLabelValue(['Industry', 'Category']) || '';
-
-  // Fallback scan if still empty
-  if (!sector || !industry) {
-      $('div, li, tr').each((_, el) => {
-        if ($(el).children().length > 5) return;
-        const text = $(el).text().trim();
-
-        if (!sector && (text === 'Sector' || text.startsWith('Sector:'))) {
-            const next = $(el).next();
-            if (next.length) sector = next.text().trim();
-        }
-        if (!industry && (text === 'Industry' || text.startsWith('Industry:'))) {
-             const next = $(el).next();
-            if (next.length) industry = next.text().trim();
-        }
-      });
-  }
+  metrics.sector = extractLabelValue(['Sector', 'Asset Class']) || '';
+  metrics.industry = extractLabelValue(['Industry', 'Category']) || '';
 
   // Description
   let description = '';
@@ -325,107 +379,25 @@ export async function getStockProfile(ticker: string): Promise<StockProfile | nu
       if (description) return;
       const headerText = $(el).text().trim();
       if (headerText.includes(`About ${upperTicker}`)) {
-
-          const findDescriptionInSiblings = (startElem: cheerio.Cheerio<any>) => {
-              let next = startElem.next();
-              let attempts = 0;
-              while (next.length && attempts < 10) {
-                   const text = next.text().trim();
-                   // Stop if we hit another header
-                   if (next.is('h2') || next.is('h3')) return null;
-
-                   // If text is substantial, it's likely the description
-                   if (text.length > 50) {
-                       if (next.is('div')) {
-                           const p = next.find('p').first();
-                           if (p.length && p.text().trim().length > 50) {
-                               return p.text().trim();
-                           }
-                           // If div has text but no p, use the text
-                           return text;
-                       }
-                       return text;
-                   }
-                   next = next.next();
-                   attempts++;
-              }
-              return null;
-          }
-
-          // Try siblings of the header
-          let desc = findDescriptionInSiblings($(el));
-
-          // If not found, check parent's siblings (in case header is wrapped in a flex/grid div)
-          if (!desc) {
-              const parent = $(el).parent();
-              if (parent.length && (parent.is('div') || parent.is('header'))) {
-                  desc = findDescriptionInSiblings(parent);
-              }
-          }
-
-          if (desc) description = desc;
+          let next = $(el).next();
+          if (next.is('div')) description = next.text().trim();
+          else if (next.is('p')) description = next.text().trim();
       }
   });
+  if (description) metrics.description = description.replace(/\[Read more\]/g, '').trim();
 
-  if (description) {
-      description = description.replace(/\[Read more\]/g, '').trim();
-      if (description.endsWith('...')) description = description.slice(0, -3).trim();
-  }
-
-  if (!description) {
-      const metaDesc = $('meta[name="description"]').attr('content');
-      if (metaDesc && !metaDesc.startsWith("Get a real-time stock price for the")) {
-          description = metaDesc;
-      }
-  }
-
-  // --- Financial Metrics Scraping ---
-
-  const metrics: Partial<StockProfile> = {};
-
+  // Financials from Table
   const extractValue = (label: string): string | undefined => {
     let val: string | undefined;
-
-    // Try finding exact text match in common elements
-    $('div, td, th, span').each((_, el) => {
+    $('tr').each((_, tr) => {
         if (val) return;
-        const text = $(el).text().trim();
-        if (text === label) {
-            let next = $(el).next();
-            if (next.length) {
-                val = next.text().trim();
-                return;
+        const cells = $(tr).find('td, th');
+        cells.each((i, cell) => {
+            if ($(cell).text().trim() === label && i + 1 < cells.length) {
+                val = $(cells[i+1]).text().trim();
             }
-        }
+        });
     });
-
-    if (!val) {
-        // Try looking for label inside a cell in a table row, take next cell
-        $('tr').each((_, tr) => {
-            if (val) return;
-            const cells = $(tr).find('td, th');
-            cells.each((i, cell) => {
-                if ($(cell).text().trim() === label) {
-                    if (i + 1 < cells.length) {
-                        val = $(cells[i+1]).text().trim();
-                    }
-                }
-            });
-        });
-    }
-
-    if (!val) {
-        $('div').each((_, el) => {
-            if (val) return;
-            const text = $(el).text().trim();
-            if (text.startsWith(label) && text.length < label.length + 20) {
-                 const part = text.substring(label.length).trim();
-                 if (part && !part.includes('\n')) {
-                    val = part;
-                 }
-            }
-        });
-    }
     return val;
   };
 
@@ -441,172 +413,85 @@ export async function getStockProfile(ticker: string): Promise<StockProfile | nu
   const rawShares = extractValue('Shares Out');
   if (rawShares) metrics.sharesOutstanding = parseMarketNumber(rawShares);
 
-  const rawEps = extractValue('EPS (ttm)');
-  if (rawEps) {
-      const n = parseFloat(rawEps.replace(/,/g, ''));
-      if (!isNaN(n)) metrics.eps = n;
-  }
-
   const rawPe = extractValue('PE Ratio');
-  if (rawPe) {
-      const n = parseFloat(rawPe.replace(/,/g, ''));
-      if (!isNaN(n)) metrics.peRatio = n;
+  if (rawPe) metrics.peRatio = parseNumber(rawPe);
+
+  const rawDiv = extractValue('DividendYield');
+  if (!metrics.dividendYield) {
+      const y = extractValue('Dividend Yield');
+      if (y) metrics.dividendYield = parseFloat(y.replace('%',''));
   }
 
+  // EPS
+  const rawEps = extractValue('EPS (ttm)');
+  if (rawEps) metrics.eps = parseNumber(rawEps);
+
+  // Forward PE
   const rawFPe = extractValue('Forward PE');
-  if (rawFPe) {
-      const n = parseFloat(rawFPe.replace(/,/g, ''));
-      if (!isNaN(n)) metrics.forwardPe = n;
-  }
+  if (rawFPe) metrics.forwardPe = parseNumber(rawFPe);
 
-  const rawDiv = extractValue('Dividend') || extractValue('Dividend (ttm)');
-  if (rawDiv) {
-      const parts = rawDiv.split('(');
-      const valStr = parts[0].replace('$', '').trim();
-      const n = parseFloat(valStr);
-      if (!isNaN(n)) metrics.dividend = n;
-
-      if (parts.length > 1) {
-           const yStr = parts[1].replace('%)', '').replace('%', '').trim();
-           const y = parseFloat(yStr);
-           if (!isNaN(y)) metrics.dividendYield = y;
-      }
-  }
-
-  const rawDivYield = extractValue('Dividend Yield');
-  if (rawDivYield) {
-      const y = parseFloat(rawDivYield.replace('%', '').trim());
-      if (!isNaN(y)) metrics.dividendYield = y;
-  }
-
-  const rawDivGrowth = extractValue('Dividend Growth (5Y)') || extractValue('5-Year Dividend Growth');
-  if (rawDivGrowth) {
-      const y = parseFloat(rawDivGrowth.replace('%', '').trim());
-      if (!isNaN(y)) metrics.dividendGrowth5Y = y;
-  }
-
-  const rawExDiv = extractValue('Ex-Dividend Date');
-  if (rawExDiv) metrics.exDividendDate = rawExDiv;
-
-  const rawVolume = extractValue('Volume');
-  if (rawVolume) metrics.volume = parseMarketNumber(rawVolume);
-
-  const rawOpen = extractValue('Open');
-  if (rawOpen) {
-       const n = parseFloat(rawOpen.replace(/,/g, ''));
-       if (!isNaN(n)) metrics.open = n;
-  }
-
-  const rawPrevClose = extractValue('Previous Close');
-  if (rawPrevClose) {
-       const n = parseFloat(rawPrevClose.replace(/,/g, ''));
-       if (!isNaN(n)) metrics.previousClose = n;
-  }
-
-  const rawDaysRange = extractValue("Day's Range");
-  if (rawDaysRange) metrics.daysRange = rawDaysRange;
-
-  const raw52Range = extractValue('52-Week Range');
-  if (raw52Range) metrics.fiftyTwoWeekRange = raw52Range;
-
+  // Beta
   const rawBeta = extractValue('Beta');
-  if (rawBeta) {
-      const n = parseFloat(rawBeta);
-      if (!isNaN(n)) metrics.beta = n;
-  }
+  if (rawBeta) metrics.beta = parseNumber(rawBeta);
 
-  const rawEarnings = extractValue('Earnings Date');
-  if (rawEarnings) metrics.earningsDate = rawEarnings;
-
+  // Expense Ratio
   const rawExp = extractValue('Expense Ratio');
-  if (rawExp) {
-      const n = parseFloat(rawExp.replace('%', '').trim());
-      if (!isNaN(n)) metrics.expenseRatio = n;
-  }
+  if (rawExp) metrics.expenseRatio = parseFloat(rawExp.replace('%',''));
 
-  const rawInception = extractValue('Inception Date');
-  if (rawInception) metrics.inceptionDate = rawInception;
-
-  const rawPayoutFreq = extractValue('Payout Frequency');
-  if (rawPayoutFreq) metrics.payoutFrequency = rawPayoutFreq;
-
-  const rawPayoutRatio = extractValue('Payout Ratio');
-  if (rawPayoutRatio) {
-      const n = parseFloat(rawPayoutRatio.replace('%', '').trim());
-      if (!isNaN(n)) metrics.payoutRatio = n;
-  }
-
-  const rawHoldings = extractValue('Holdings');
-  if (rawHoldings) {
-      const n = parseInt(rawHoldings.replace(/,/g, ''), 10);
-      if (!isNaN(n)) metrics.holdingsCount = n;
-  }
-
-  // Parse ranges into Low/High if available
-  if (metrics.fiftyTwoWeekRange && metrics.fiftyTwoWeekRange.includes('-')) {
-      const parts = metrics.fiftyTwoWeekRange.split('-').map(s => parseFloat(s.trim().replace(/,/g, '')));
-      if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-          metrics.fiftyTwoWeekLow = parts[0];
-          metrics.fiftyTwoWeekHigh = parts[1];
-      }
-  }
-
-  // Analyst Data
-  let analyst: StockProfile['analyst'] | undefined;
-
-  $('h2, h3').each((_, el) => {
-      const headerText = $(el).text().trim();
-      if (headerText === 'Analyst Summary') {
-          let summary = '';
-          let next = $(el).next();
-          while (next.length && (next.is('br') || next.text().trim() === '')) {
-              next = next.next();
-          }
-          if (next.is('p')) summary = next.text().trim();
-
-          let consensus = '';
-          let targetPrice: number | null = null;
-          let targetUpside: number | null = null;
-
-          const consensusMatch = $('div').filter((_, e) => $(e).text().includes('Analyst Consensus:')).last();
-          if (consensusMatch.length) {
-              const text = consensusMatch.text();
-              const match = text.match(/Analyst Consensus:\s*([A-Za-z\s]+)/);
-              if (match) consensus = match[1].trim().split('\n')[0].trim();
-          }
-
-          const targetLabel = $('div').filter((_, e) => $(e).text().trim() === 'Price Target').last();
-          if (targetLabel.length) {
-              const valEl = targetLabel.next();
-              const valMatch = valEl.text().trim().match(/\$([\d,.]+)/);
-              if (valMatch) targetPrice = parseFloat(valMatch[1].replace(/,/g, ''));
-
-              const upsideEl = valEl.next();
-              const upsideText = upsideEl.text().trim() || valEl.text().trim();
-              const upMatch = upsideText.match(/\(([\d.-]+)%\s*(upside|downside)\)/i);
-              if (upMatch) {
-                  let pct = parseFloat(upMatch[1]);
-                  if (upMatch[2].toLowerCase() === 'downside') pct = -pct;
-                  targetUpside = pct;
-              }
-          }
-
-          if (summary || consensus || targetPrice) {
-            analyst = {
-                summary,
-                consensus,
-                targetPrice,
-                targetUpside
-            };
-          }
-      }
-  });
-
-  return {
-    sector,
-    industry,
-    description,
-    analyst,
-    ...metrics
-  };
+  return metrics as StockProfile;
 }
+
+export async function getHistoricalData(ticker: string): Promise<HistoricalQuote[]> {
+    let url = `https://stockanalysis.com/stocks/${ticker.toLowerCase()}/history/`;
+    let response = await fetchWithUserAgent(url);
+    if (response.status === 404) {
+        url = `https://stockanalysis.com/etf/${ticker.toLowerCase()}/history/`;
+        response = await fetchWithUserAgent(url);
+    }
+    // TSX/NEO fallback...
+    if (response.status === 404 && ticker.includes('.')) {
+        const [base, suffix] = ticker.split('.');
+        if (suffix?.toUpperCase() === 'TO') url = `https://stockanalysis.com/quote/tsx/${base.toLowerCase()}/history/`;
+        response = await fetchWithUserAgent(url);
+    }
+
+    if (!response.ok) return [];
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const history: HistoricalQuote[] = [];
+
+    const rows = $('tbody tr');
+    rows.each((_, tr) => {
+        const tds = $(tr).find('td');
+        if (tds.length >= 7) {
+            const dateStr = tds.eq(0).text().trim();
+            const closeStr = tds.eq(4).text().trim();
+            const volumeStr = tds.eq(7).text().trim();
+
+            const date = parseDate(dateStr);
+            const close = parseNumber(closeStr);
+            const volume = parseNumber(volumeStr);
+
+            if (!isNaN(close)) {
+                history.push({
+                    date,
+                    open: parseNumber(tds.eq(1).text()) || close,
+                    high: parseNumber(tds.eq(2).text()) || close,
+                    low: parseNumber(tds.eq(3).text()) || close,
+                    close,
+                    volume: isNaN(volume) ? 0 : volume,
+                    adjClose: parseNumber(tds.eq(5).text()) || close
+                });
+            }
+        }
+    });
+    return history;
+}
+
+// Restore Export for Compatibility
+export const getEtfHoldings = async (ticker: string) => {
+    const breakdown = await getEtfBreakdown(ticker);
+    return breakdown.holdings;
+};
+export const getEtfHoldingsLegacy = getEtfHoldings;

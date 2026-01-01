@@ -13,6 +13,11 @@ const prismaClientSingleton = () => {
     // Standard Postgres usage requires Adapter in Prisma 7 with prisma.config.ts
     // We strictly require DATABASE_URL in production.
     if (!process.env.DATABASE_URL) {
+        // In test environments (like CI/Bun Test), we might not have a DB URL.
+        // We should allow instantiation for mocking purposes, but warn.
+        if (process.env.NODE_ENV === 'test') {
+             return new PrismaClient() as unknown as PrismaClient;
+        }
         throw new Error("DATABASE_URL is not defined in environment variables");
     }
 
@@ -37,7 +42,8 @@ declare global {
   var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>;
 }
 
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
+// Export named 'prisma' as well as default to satisfy different import styles and mocking
+export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 export default prisma;
 

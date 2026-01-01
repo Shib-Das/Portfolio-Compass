@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncEtfDetails } from '@/lib/etf-sync';
 import { EtfHistory } from '@prisma/client';
-import { Decimal } from 'decimal.js';
+import { Decimal } from '@/lib/decimal';
 
 
 export async function POST(req: NextRequest) {
