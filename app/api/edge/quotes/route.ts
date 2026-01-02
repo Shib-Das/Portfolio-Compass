@@ -138,14 +138,15 @@ function processResponse(ticker: string, data: any, includeHistory: boolean): Qu
       const closes = quote.close;
 
       if (Array.isArray(timestamps) && Array.isArray(closes)) {
+        // Explicit type guard filtering
         output.history = timestamps.map((ts: number, i: number) => {
           if (closes[i] === null || closes[i] === undefined) return null;
           return {
             date: new Date(ts * 1000).toISOString(),
-            price: closes[i],
+            price: Number(closes[i]), // Explicit number cast
             interval: '1d'
           };
-        }).filter((x: any) => x !== null);
+        }).filter((x): x is { date: string; price: number; interval: string } => x !== null);
       }
     }
 
