@@ -35,6 +35,39 @@ const fetchWithUserAgent = async (url: string) => {
   });
 }
 
+export async function getMarketMovers(type: 'gainers' | 'losers'): Promise<string[]> {
+  const url = `https://stockanalysis.com/markets/${type}/`;
+  const res = await fetchWithUserAgent(url);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch market movers: ${res.status}`);
+  }
+
+  const html = await res.text();
+  const $ = cheerio.load(html);
+  const tickers: string[] = [];
+
+  // StockAnalysis movers table usually has tickers in the second column (td.sym or similar)
+  // We'll look for standard table rows
+  $('table tr').each((i, el) => {
+    if (i === 0) return; // Skip header
+
+    // Attempt to find the ticker cell
+    const symbolCell = $(el).find('td').filter((_, td) => {
+      const text = $(td).text().trim();
+      // Tickers are usually short, uppercase, no spaces (maybe dots)
+      return /^[A-Z.-]+$/.test(text) && text.length < 10;
+    }).first();
+
+    if (symbolCell.length) {
+      tickers.push(symbolCell.text().trim());
+    }
+  });
+
+  // Limit to top 20
+  return tickers.slice(0, 20);
+}
+
 export async function getStockProfile(ticker: string): Promise<StockProfile> {
   if (!isValidTicker(ticker)) {
     throw new Error("Invalid ticker format");
@@ -57,7 +90,8 @@ export async function getStockProfile(ticker: string): Promise<StockProfile> {
 
   const res = await fetchWithUserAgent(url);
   if (!res.ok) {
-     // If stock fail, try ETF url structure
+     // If stock fail, try generic ETF url structure
+     // StockAnalysis uses /etf/ticker for ETFs
      const etfUrl = `https://stockanalysis.com/etf/${exchangePrefix}${urlTicker}/`;
      const etfRes = await fetchWithUserAgent(etfUrl);
      if (!etfRes.ok) {

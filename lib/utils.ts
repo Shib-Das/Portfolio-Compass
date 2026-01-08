@@ -7,10 +7,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const safeDecimal = (val: number | string | Decimal | null | undefined): number | Decimal => {
+  if (val === null || val === undefined) return 0; // Or return null if the codebase supports it, but current contract expects 0 fallback for UI safety.
   if (Decimal.isDecimal(val)) return val;
-  if (typeof val === "string") return parseFloat(val);
+  if (typeof val === "string") {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) ? 0 : parsed;
+  }
   if (typeof val === "number") return val;
-  return 0;
+  return 0; // Fallback for any other type (unlikely with strict typing)
 };
 
 export function formatCurrency(value: number | Decimal) {

@@ -119,37 +119,39 @@ export async function syncEtfDetails(
         },
       });
 
-      if (details.sectors && details.sectors.length > 0) {
-        await tx.sectorAllocation.deleteMany({
-          where: { etfTicker: ticker },
+      // Update Sectors
+      // details.sectors is a Record<string, Decimal>
+      if (details.sectors && Object.keys(details.sectors).length > 0) {
+        await tx.etfSector.deleteMany({
+          where: { etfId: ticker },
         });
 
-        await tx.sectorAllocation.createMany({
-          data: details.sectors.map((s) => ({
-            etfTicker: ticker,
-            sector: s.name,
-            weight: new Decimal(s.value),
+        await tx.etfSector.createMany({
+          data: Object.entries(details.sectors).map(([sector, weight]) => ({
+            etfId: ticker,
+            sector_name: sector,
+            weight: new Decimal(weight),
           })),
         });
       }
 
       if (
         details.assetType === "ETF" &&
-        details.holdings &&
-        details.holdings.length > 0
+        details.topHoldings &&
+        details.topHoldings.length > 0
       ) {
         await tx.holding.deleteMany({
           where: { etfId: ticker },
         });
 
         await tx.holding.createMany({
-          data: details.holdings.map((h) => ({
+          data: details.topHoldings.map((h) => ({
             etfId: ticker,
-            ticker: h.symbol,
+            ticker: h.ticker,
             name: h.name,
             sector: h.sector || "Unknown",
-            weight: new Decimal(h.percent),
-            shares: h.shares ? new Decimal(h.shares) : null,
+            weight: new Decimal(h.weight),
+            shares: null, // Scraper doesn't return shares
           })),
         });
       }
@@ -174,7 +176,7 @@ export async function syncEtfDetails(
           data: details.history.map((h) => ({
             etfId: ticker,
             date: new Date(h.date),
-            price: new Decimal(h.price),
+            close: new Decimal(h.close), // Map close -> close (not price)
             interval: "1d",
           })),
         });
