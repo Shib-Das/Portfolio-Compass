@@ -30,6 +30,7 @@ import SectorPieChart, { COLORS } from "./SectorPieChart";
 import AssetProfileCard from "./AssetProfileCard";
 import EtfVerdictCard from "./EtfVerdictCard";
 import ComparisonModal from "./ComparisonModal";
+import MetricExplainer from "./MetricExplainer";
 import { useMemo, useState, useEffect, useRef } from "react";
 
 interface ETFDetailsDrawerProps {
@@ -63,38 +64,6 @@ function formatNumber(num: number | undefined, decimals = 2): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
-}
-
-// Compact card for the Metrics grid
-function MetricCard({
-  label,
-  value,
-  subValue,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  subValue?: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="bg-white/5 rounded-xl p-3 border border-white/5 hover:bg-white/10 transition-colors group">
-      <div className="text-[10px] text-neutral-400 font-medium uppercase tracking-wider mb-1 truncate group-hover:text-neutral-300 transition-colors">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "text-sm font-bold truncate font-mono",
-          highlight ? "text-emerald-400" : "text-white",
-        )}
-      >
-        {value}
-      </div>
-      {subValue && (
-        <div className="text-[10px] text-neutral-500 mt-0.5">{subValue}</div>
-      )}
-    </div>
-  );
 }
 
 export default function ETFDetailsDrawer({
@@ -1129,19 +1098,19 @@ export default function ETFDetailsDrawer({
                             Valuation
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Market Cap"
                               value={formatLargeNumber(displayEtf.marketCap)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="PE Ratio"
                               value={formatNumber(displayEtf.peRatio)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Forward PE"
                               value={formatNumber(displayEtf.forwardPe)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="EPS (ttm)"
                               value={formatNumber(displayEtf.eps)}
                             />
@@ -1155,7 +1124,7 @@ export default function ETFDetailsDrawer({
                               Dividends
                             </h4>
                             <div className="grid grid-cols-2 gap-3">
-                              <MetricCard
+                              <MetricExplainer
                                 label="Div Yield"
                                 value={
                                   displayEtf.dividendYield
@@ -1164,7 +1133,7 @@ export default function ETFDetailsDrawer({
                                 }
                                 highlight={!!displayEtf.dividendYield}
                               />
-                              <MetricCard
+                              <MetricExplainer
                                 label="Dividend"
                                 value={
                                   displayEtf.dividend
@@ -1172,11 +1141,11 @@ export default function ETFDetailsDrawer({
                                     : "n/a"
                                 }
                               />
-                              <MetricCard
+                              <MetricExplainer
                                 label="Ex-Div Date"
                                 value={displayEtf.exDividendDate || "n/a"}
                               />
-                              <MetricCard
+                              <MetricExplainer
                                 label="Earnings Date"
                                 value={displayEtf.earningsDate || "n/a"}
                               />
@@ -1190,11 +1159,11 @@ export default function ETFDetailsDrawer({
                             Trading
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Beta"
                               value={formatNumber(displayEtf.beta)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Volume"
                               value={
                                 displayEtf.volume
@@ -1204,11 +1173,11 @@ export default function ETFDetailsDrawer({
                                   : "n/a"
                               }
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="52W High"
                               value={formatNumber(displayEtf.fiftyTwoWeekHigh)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="52W Low"
                               value={formatNumber(displayEtf.fiftyTwoWeekLow)}
                             />
@@ -1221,15 +1190,15 @@ export default function ETFDetailsDrawer({
                             Financials
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Revenue"
                               value={formatLargeNumber(displayEtf.revenue)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Net Income"
                               value={formatLargeNumber(displayEtf.netIncome)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Shares Out"
                               value={formatLargeNumber(
                                 displayEtf.sharesOutstanding,
@@ -1246,11 +1215,11 @@ export default function ETFDetailsDrawer({
                             Overview
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Assets"
                               value={formatLargeNumber(displayEtf.marketCap)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Expense Ratio"
                               value={
                                 displayEtf.metrics?.mer
@@ -1258,17 +1227,17 @@ export default function ETFDetailsDrawer({
                                   : "n/a"
                               }
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="PE Ratio"
                               value={formatNumber(displayEtf.peRatio)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Shares Out"
                               value={formatLargeNumber(
                                 displayEtf.sharesOutstanding,
                               )}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Volume"
                               value={
                                 displayEtf.volume
@@ -1278,7 +1247,7 @@ export default function ETFDetailsDrawer({
                                   : "n/a"
                               }
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Holdings"
                               value={
                                 displayEtf.holdingsCount
@@ -1288,11 +1257,11 @@ export default function ETFDetailsDrawer({
                                     : "n/a"
                               }
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Inception Date"
                               value={displayEtf.inceptionDate || "n/a"}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Beta"
                               value={formatNumber(displayEtf.beta)}
                             />
@@ -1305,7 +1274,7 @@ export default function ETFDetailsDrawer({
                             Dividends
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Dividend Yield"
                               value={
                                 displayEtf.metrics?.yield
@@ -1314,7 +1283,7 @@ export default function ETFDetailsDrawer({
                               }
                               highlight={!!displayEtf.metrics?.yield}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Dividend (ttm)"
                               value={
                                 displayEtf.dividend
@@ -1322,15 +1291,15 @@ export default function ETFDetailsDrawer({
                                   : "n/a"
                               }
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Ex-Dividend Date"
                               value={displayEtf.exDividendDate || "n/a"}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Payout Frequency"
                               value={displayEtf.payoutFrequency || "n/a"}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Payout Ratio"
                               value={
                                 displayEtf.payoutRatio
@@ -1347,23 +1316,23 @@ export default function ETFDetailsDrawer({
                             Trading
                           </h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <MetricCard
+                            <MetricExplainer
                               label="Open"
                               value={formatNumber(displayEtf.open)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Previous Close"
                               value={formatNumber(displayEtf.previousClose)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="Day's Range"
                               value={displayEtf.daysRange || "n/a"}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="52-Week Low"
                               value={formatNumber(displayEtf.fiftyTwoWeekLow)}
                             />
-                            <MetricCard
+                            <MetricExplainer
                               label="52-Week High"
                               value={formatNumber(displayEtf.fiftyTwoWeekHigh)}
                             />

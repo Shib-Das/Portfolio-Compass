@@ -18,6 +18,7 @@ import { useBatchUpdatePortfolio, BatchUpdateItem } from '@/hooks/useBatchUpdate
 import { useRemoveStock } from '@/hooks/useRemoveStock';
 import { useQueryClient } from '@tanstack/react-query';
 import { savePortfolio } from '@/lib/storage';
+import BioBackground from '@/components/BioBackground';
 
 type ViewMode = 'LANDING' | 'INTRO_QUIZ' | 'APP';
 type Tab = 'TRENDING' | 'PORTFOLIO' | 'ETFS' | 'STOCKS';
@@ -100,7 +101,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black overflow-hidden relative">
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <BioBackground />
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="blob blob-1" />
         <div className="blob blob-2" />
         <div className="blob blob-3" />

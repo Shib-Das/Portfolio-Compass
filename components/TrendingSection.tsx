@@ -194,7 +194,7 @@ export default function TrendingSection({
         <div className={cn("p-3 rounded-xl", styles.bg)}>
           <Icon className={cn("w-6 h-6", styles.text)} />
         </div>
-        <h2 className="text-3xl font-bold text-white tracking-tight">
+        <h2 className="text-3xl font-display font-bold text-white tracking-tight uppercase">
           {title}
         </h2>
         <span className="text-neutral-400 text-sm font-medium ml-2">

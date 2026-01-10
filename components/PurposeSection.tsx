@@ -11,6 +11,7 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import Image from "next/image";
+import BiopunkHeading from "./BiopunkHeading";
 
 const cardVariants: Variants = {
   hidden: { opacity: 0, y: 50 },
@@ -74,18 +75,14 @@ const PurposeSection = () => {
             ADVANCED ANALYTICS
           </motion.div>
 
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl font-display font-bold text-stone-100 mb-6"
-          >
-            Intelligent{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-              Portfolio Management
-            </span>
-          </motion.h2>
+          <div className="mb-6">
+             <BiopunkHeading size="lg" light>
+                Intelligent{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                  Portfolio Management
+                </span>
+             </BiopunkHeading>
+          </div>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -156,9 +153,9 @@ const PurposeSection = () => {
           <div className="pl-8 md:pl-12">
             <div className="flex items-center gap-3 mb-6">
               <HeartHandshake className="text-emerald-400 w-6 h-6" />
-              <h3 className="text-2xl font-display font-bold text-stone-100">
+              <BiopunkHeading size="md" light>
                 Our Mission
-              </h3>
+              </BiopunkHeading>
             </div>
             <p className="text-xl md:text-2xl text-stone-300 leading-relaxed font-light mb-6">
               "We built PortfolioCompass to bridge the gap between institutional tools and retail investors. Our goal is to provide a clear, data-driven platform that empowers you to make informed investment decisions without the noise."

@@ -10,6 +10,7 @@ import {
   AnimatePresence,
 } from "framer-motion";
 import InteractiveSlider from "./InteractiveSlider";
+import BiopunkHeading from "./BiopunkHeading";
 
 const textVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -138,13 +139,11 @@ export default function Hero({ onStart, onViewMarket }: HeroProps) {
               MARKET: {marketStatus}
             </motion.div>
 
-            <motion.h1
-              custom={1}
-              variants={textVariants}
-              className="text-4xl sm:text-5xl md:text-7xl font-display font-bold leading-tight mt-6"
-            >
-              Make your <span className="text-stone-600">portfolio</span> <br />
-              <div className="h-[1.2em] relative overflow-hidden">
+            <div className="mt-6">
+              <BiopunkHeading size="xl">
+                Make your <span className="text-stone-600">portfolio</span> <br />
+              </BiopunkHeading>
+              <div className="h-[1.2em] relative overflow-hidden text-5xl md:text-7xl font-display font-bold">
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={titleIndex}
@@ -158,7 +157,7 @@ export default function Hero({ onStart, onViewMarket }: HeroProps) {
                   </motion.span>
                 </AnimatePresence>
               </div>
-            </motion.h1>
+            </div>
 
             <motion.p
               custom={2}

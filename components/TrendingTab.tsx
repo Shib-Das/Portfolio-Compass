@@ -237,10 +237,10 @@ export default function TrendingTab({
       {loadingStocks ? (
         <>
           <div className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-white">
-              <Zap className="w-6 h-6 text-purple-400" />
-              MAG-7
-            </h2>
+            <div className="flex items-center gap-2 mb-6">
+                 <Zap className="w-6 h-6 text-purple-400" />
+                 <div className="text-2xl font-display font-bold text-white">MAG-7</div>
+            </div>
             {renderSkeleton(4)}
           </div>
           <div className="mb-12">{renderSkeleton(4)}</div>
