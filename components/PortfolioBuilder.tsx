@@ -120,7 +120,7 @@ export default function PortfolioBuilder({
     }
   }, [portfolio]);
 
-  const handleInteraction = () => {
+  const handleInteraction = useCallback(() => {
     isInteracting.current = true;
     if (sortTimeout.current) clearTimeout(sortTimeout.current);
 
@@ -128,14 +128,14 @@ export default function PortfolioBuilder({
       isInteracting.current = false;
       setDisplayPortfolio([...portfolio].sort((a, b) => b.weight - a.weight));
     }, 3000);
-  };
+  }, [portfolio]);
 
   const handleUpdateShares = useCallback(
     (ticker: string, shares: number) => {
       handleInteraction();
       onUpdateShares(ticker, shares);
     },
-    [onUpdateShares],
+    [onUpdateShares, handleInteraction],
   );
 
   const handleUpdateWeight = useCallback(
@@ -143,7 +143,7 @@ export default function PortfolioBuilder({
       handleInteraction();
       onUpdateWeight(ticker, weight);
     },
-    [onUpdateWeight],
+    [onUpdateWeight, handleInteraction],
   );
 
   const pieData = Object.entries(sectorAllocation)
